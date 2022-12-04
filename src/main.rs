@@ -1,126 +1,153 @@
-use sdl2::event::Event;
-use sdl2::hint::{self, Hint};
-use sdl2::image::LoadTexture;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use sdl2::rect::Rect;
-use sdl2::render::TextureCreator;
-use sdl2::video::{gl_attr, GLProfile};
-use std::time::Duration;
+use sfml::graphics::{
+  Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
+};
+use sfml::system::{Vector2, Vector2f};
+use sfml::window::{ContextSettings, Event, Key, Style, VideoMode};
+use sfml::SfBox;
 
-fn find_sdl_gl_driver() -> Option<u32> {
-    for (index, item) in sdl2::render::drivers().enumerate() {
-        if item.name == "opengl" {
-            return Some(index as u32);
-        }
-    }
-    None
+const SQUARE_SIZE: u32 = 100;
+const WINDOW_SIZE: u32 = 8 * SQUARE_SIZE;
+
+const DARK: Color = Color::rgb(30, 31, 79);
+const LIGHT: Color = Color::rgb(132, 134, 232);
+
+// x-offsets for displaying
+const PAWN_XOFF: i32 = 10;
+const KNIGHT_XOFF: i32 = 5;
+const ROOK_XOFF: i32 = 6;
+const BISHOP_XOFF: i32 = 3;
+const QUEEN_XOFF: i32 = -2;
+const KING_XOFF: i32 = 2;
+
+#[derive(Copy, Clone)]
+enum PieceColor {
+  White = 0,
+  Black = 1,
 }
 
-pub fn main() {
-    // let sdl_context = sdl2::init().unwrap();
+#[derive(Copy, Clone)]
+enum PieceType {
+  Pawn = 0,
+  Knight = 1,
+  Bishop = 2,
+  Rook = 3,
+  Queen = 4,
+  King = 5,
+}
 
-    // // hint::set_with_priority("SDL_RENDER_SCALE_QUALITY", "1", &Hint::Override);
+#[derive(Copy, Clone)]
+struct Piece {
+  class: PieceType,
+  color: PieceColor,
+}
 
-    // let video_subsystem = sdl_context.video().unwrap();
+impl Piece {
+  // draw the piece on the board
+  fn draw(self, (x, y): (u32, u32), window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
+    let idx = self.color as usize * 6 + self.class as usize;
+    let texture = &texture_map[idx];
 
-    // let window = video_subsystem
-    //     .window("Chess AI", 8 * 80, 8 * 80)
-    //     .position_centered()
-    //     .build()
-    //     .unwrap();
+    // maybe reuse sprites? idk if that affects anything...
+    let mut sprite = Sprite::new();
+    sprite.set_texture(&texture, false);
 
-    // let mut canvas = window.into_canvas().build().unwrap();
+    let offset = match self.class {
+      PieceType::Pawn => PAWN_XOFF,
+      PieceType::Knight => KNIGHT_XOFF,
+      PieceType::Bishop => BISHOP_XOFF,
+      PieceType::Rook => ROOK_XOFF,
+      PieceType::Queen => QUEEN_XOFF,
+      PieceType::King => KING_XOFF,
+    };
 
-    // let sdl_context = sdl2::init().unwrap();
-    // let video_subsystem = sdl_context.video().unwrap();
-    // let window = video_subsystem
-    //     .window("Chess AI", 8 * 80, 8 * 80)
-    //     .opengl() // this line DOES NOT enable opengl, but allows you to create/get an OpenGL context from your window.
-    //     .build()
-    //     .unwrap();
+    sprite.set_position(Vector2f::new(
+      ((x * SQUARE_SIZE) as i32 + offset) as f32,
+      (y * SQUARE_SIZE) as f32,
+    ));
+    window.draw(&sprite);
+  }
+}
 
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    let gl_attr = video_subsystem.gl_attr();
+fn main() {
+  let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
-    // Don't use deprecated OpenGL functions
-    gl_attr.set_context_profile(GLProfile::Core);
+  let mut window = RenderWindow::new(
+    (8 * SQUARE_SIZE, 8 * SQUARE_SIZE),
+    "Chess AI",
+    Style::CLOSE,
+    &ContextSettings {
+      antialiasing_level: max_aa,
+      ..Default::default()
+    },
+  );
 
-    // Set the context into debug mode
-    gl_attr.set_context_flags().debug().set();
+  let vm = VideoMode::desktop_mode();
 
-    // Set the OpenGL context version (OpenGL 3.2)
-    gl_attr.set_context_version(3, 2);
+  window.set_vertical_sync_enabled(true);
+  window.set_position(Vector2::new(
+    ((vm.width - WINDOW_SIZE) / 2) as i32,
+    ((vm.height - WINDOW_SIZE) / 2) as i32,
+  ));
 
-    // Enable anti-aliasing
-    gl_attr.set_multisample_buffers(1);
-    gl_attr.set_multisample_samples(4);
+  let mut texture = Texture::from_file("./resources/b_king.png").unwrap();
+  texture.set_smooth(true);
 
-    let window = video_subsystem
-        .window("rust-sdl2 demo: Video", 8 * 80, 8 * 80)
-        .opengl()
-        .build()
-        .unwrap();
+  let texture_map = [
+    Texture::from_file("./resources/w_pawn.png").unwrap(),
+    Texture::from_file("./resources/w_knight.png").unwrap(),
+    Texture::from_file("./resources/w_bishop.png").unwrap(),
+    Texture::from_file("./resources/w_rook.png").unwrap(),
+    Texture::from_file("./resources/w_queen.png").unwrap(),
+    Texture::from_file("./resources/w_king.png").unwrap(),
+    // -- black pieces
+    Texture::from_file("./resources/b_pawn.png").unwrap(),
+    Texture::from_file("./resources/b_knight.png").unwrap(),
+    Texture::from_file("./resources/b_bishop.png").unwrap(),
+    Texture::from_file("./resources/b_rook.png").unwrap(),
+    Texture::from_file("./resources/b_queen.png").unwrap(),
+    Texture::from_file("./resources/b_king.png").unwrap(),
+  ];
 
-    // Yes, we're still using the Core profile
-    assert_eq!(gl_attr.context_profile(), GLProfile::Core);
-    // ... and we're still using OpenGL 3.2
-    assert_eq!(gl_attr.context_version(), (3, 2));
-
-    dbg!(hint::set("SDL_RENDER_SCALE_QUALITY", "1"));
-    dbg!(hint::get("SDL_RENDER_SCALE_QUALITY"));
-
-    let mut canvas = window
-        .into_canvas()
-        .index(find_sdl_gl_driver().unwrap())
-        .build()
-        .unwrap();
-
-    let tc = canvas.texture_creator();
-
-    let t = tc.load_texture("./white_pawn.png").unwrap();
-
-    canvas.set_draw_color(Color::RGB(0, 255, 255));
-    canvas.clear();
-    canvas.present();
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    'running: loop {
-        canvas.set_draw_color(Color::RGB(132, 134, 232));
-        canvas.clear();
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {}
-            }
-        }
-
-        canvas.set_draw_color(Color::RGB(30, 31, 79));
-        for i in 0..8 {
-            for j in 0..8 {
-                if (i & 1 == 0) ^ (j & 1 == 0) {
-                    canvas.fill_rect(Rect::new(80 * i, 80 * j, 80, 80)).unwrap();
-                }
-            }
-        }
-
-        // canvas.copy(&t, None, None).unwrap();
-
-        // canvas.copy(&t, None, Rect::new(0, 0, 80, 80)).unwrap();
-        canvas
-            .copy(&t, None, Rect::new(0, 0, 80 * 8, 80 * 8))
-            .unwrap();
-
-        // canvas.
-
-        // The rest of the game loop goes here...
-
-        canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+  loop {
+    while let Some(event) = window.poll_event() {
+      match event {
+        Event::Closed
+        | Event::KeyPressed {
+          code: Key::Escape, ..
+        } => return,
+        _ => {}
+      }
     }
+
+    window.clear(LIGHT);
+
+    let mut rect = RectangleShape::new();
+    rect.set_fill_color(DARK);
+    rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
+
+    // draw dark squares
+    for i in 0..8 {
+      for j in 0..8 {
+        if ((i & 1) ^ (j & 1)) != 0 {
+          rect.set_position(Vector2f::new(
+            (SQUARE_SIZE * i) as f32,
+            (SQUARE_SIZE * j) as f32,
+          ));
+          window.draw(&rect);
+        }
+      }
+    }
+
+    for i in 0..8 {
+      for j in 0..8 {
+        Piece {
+          class: PieceType::King,
+          color: PieceColor::Black,
+        }
+        .draw((i, j), &mut window, &texture_map);
+      }
+    }
+
+    window.display()
+  }
 }
