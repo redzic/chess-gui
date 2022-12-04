@@ -22,13 +22,13 @@ const BISHOP_XOFF: i32 = 3;
 const QUEEN_XOFF: i32 = -2;
 const KING_XOFF: i32 = 2;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum PieceColor {
   White = 0,
   Black = 1,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum PieceType {
   Pawn = 0,
   Knight = 1,
@@ -38,7 +38,7 @@ enum PieceType {
   King = 5,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Piece {
   class: PieceType,
   color: PieceColor,
@@ -266,7 +266,10 @@ fn main() {
               selection = None;
             }
           } else {
-            selection = Some((x, y));
+            // don't allow selecting empty pieces
+            if board[8 * x + y] != None {
+              selection = Some((x, y));
+            }
           }
         }
         _ => {}
