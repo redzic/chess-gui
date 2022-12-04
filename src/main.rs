@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
 };
@@ -20,13 +22,13 @@ const BISHOP_XOFF: i32 = 3;
 const QUEEN_XOFF: i32 = -2;
 const KING_XOFF: i32 = 2;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum PieceColor {
   White = 0,
   Black = 1,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum PieceType {
   Pawn = 0,
   Knight = 1,
@@ -36,8 +38,8 @@ enum PieceType {
   King = 5,
 }
 
-#[derive(Copy, Clone)]
-struct Piece {
+#[derive(Copy, Clone, Debug)]
+pub struct Piece {
   class: PieceType,
   color: PieceColor,
 }
@@ -171,6 +173,32 @@ impl Board {
   }
 }
 
+impl Index<usize> for Board {
+  type Output = Option<Piece>;
+  fn index(&self, index: usize) -> &Self::Output {
+    &self.board[index]
+  }
+}
+
+impl Index<u32> for Board {
+  type Output = Option<Piece>;
+  fn index(&self, index: u32) -> &Self::Output {
+    &self.board[index as usize]
+  }
+}
+
+impl IndexMut<usize> for Board {
+  fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+    &mut self.board[index]
+  }
+}
+
+impl IndexMut<u32> for Board {
+  fn index_mut(&mut self, index: u32) -> &mut Self::Output {
+    &mut self.board[index as usize]
+  }
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -212,6 +240,7 @@ fn main() {
   ];
 
   let mut board = Board::new();
+  let mut selection: Option<(u32, u32)> = None;
 
   loop {
     while let Some(event) = window.poll_event() {
@@ -225,11 +254,20 @@ fn main() {
           x,
           y,
         } => {
-          println!(
-            "click: ({}, {})",
-            x as u32 / SQUARE_SIZE,
-            y as u32 / SQUARE_SIZE
-          );
+          let (x, y) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
+
+          println!("click: ({}, {})", x, y);
+
+          if let Some((ox, oy)) = selection {
+            if (ox, oy) != (x, y) {
+              // move piece
+              board[8 * x + y] = board[8 * ox + oy];
+              board[8 * ox + oy] = None;
+              selection = None;
+            }
+          } else {
+            selection = Some((x, y));
+          }
         }
         _ => {}
       }
