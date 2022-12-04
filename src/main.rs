@@ -2,6 +2,7 @@ use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
 };
 use sfml::system::{Vector2, Vector2f};
+use sfml::window::mouse::Button;
 use sfml::window::{ContextSettings, Event, Key, Style, VideoMode};
 use sfml::SfBox;
 
@@ -124,6 +125,52 @@ impl Piece {
 
 // support Forsyth–Edwards Notation (FEN) notation
 
+type BoardState = Option<Piece>;
+
+pub struct Board {
+  board: [BoardState; 64],
+}
+
+impl Board {
+  fn new() -> Self {
+    let mut board = [None; 64];
+
+    for j in 0..8 {
+      board[8 * j + 1] = Some(BP);
+      board[8 * j + 6] = Some(WP);
+    }
+
+    board[8 * 0 + 7] = Some(WR);
+    board[8 * 7 + 7] = Some(WR);
+    board[8 * 0 + 0] = Some(BR);
+    board[8 * 7 + 0] = Some(BR);
+    board[8 * 1 + 7] = Some(WKN);
+    board[8 * 6 + 7] = Some(WKN);
+    board[8 * 1 + 0] = Some(BKN);
+    board[8 * 6 + 0] = Some(BKN);
+    board[8 * 2 + 7] = Some(WB);
+    board[8 * 5 + 7] = Some(WB);
+    board[8 * 2 + 0] = Some(BB);
+    board[8 * 5 + 0] = Some(BB);
+    board[8 * 3 + 0] = Some(BQ);
+    board[8 * 3 + 7] = Some(WQ);
+    board[8 * 4 + 0] = Some(BK);
+    board[8 * 4 + 7] = Some(WK);
+
+    Self { board }
+  }
+
+  fn draw(&self, window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
+    for i in 0..8 {
+      for j in 0..8 {
+        if let Some(piece) = self.board[8 * i + j] {
+          piece.draw((i as u32, j as u32), window, texture_map);
+        }
+      }
+    }
+  }
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -164,6 +211,8 @@ fn main() {
     Texture::from_file("./resources/b_king.png").unwrap(),
   ];
 
+  let mut board = Board::new();
+
   loop {
     while let Some(event) = window.poll_event() {
       match event {
@@ -171,6 +220,17 @@ fn main() {
         | Event::KeyPressed {
           code: Key::Escape, ..
         } => return,
+        Event::MouseButtonPressed {
+          button: Button::Left,
+          x,
+          y,
+        } => {
+          println!(
+            "click: ({}, {})",
+            x as u32 / SQUARE_SIZE,
+            y as u32 / SQUARE_SIZE
+          );
+        }
         _ => {}
       }
     }
@@ -194,31 +254,7 @@ fn main() {
       }
     }
 
-    for j in 0..8 {
-      BP.draw((j, 1), &mut window, &texture_map);
-      WP.draw((j, 6), &mut window, &texture_map);
-    }
-
-    WR.draw((0, 7), &mut window, &texture_map);
-    WR.draw((7, 7), &mut window, &texture_map);
-    BR.draw((0, 0), &mut window, &texture_map);
-    BR.draw((7, 0), &mut window, &texture_map);
-
-    WKN.draw((1, 7), &mut window, &texture_map);
-    WKN.draw((6, 7), &mut window, &texture_map);
-    BKN.draw((1, 0), &mut window, &texture_map);
-    BKN.draw((6, 0), &mut window, &texture_map);
-
-    WB.draw((2, 7), &mut window, &texture_map);
-    WB.draw((5, 7), &mut window, &texture_map);
-    BB.draw((2, 0), &mut window, &texture_map);
-    BB.draw((5, 0), &mut window, &texture_map);
-
-    BQ.draw((3, 0), &mut window, &texture_map);
-    WQ.draw((3, 7), &mut window, &texture_map);
-
-    BK.draw((4, 0), &mut window, &texture_map);
-    WK.draw((4, 7), &mut window, &texture_map);
+    board.draw(&mut window, &texture_map);
 
     window.display()
   }
