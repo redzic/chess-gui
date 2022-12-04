@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut, Neg, Not};
+use std::ops::{Index, IndexMut, Not};
 
 use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
