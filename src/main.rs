@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, Neg, Not};
 
 use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
@@ -26,6 +26,18 @@ const KING_XOFF: i32 = 2;
 enum PieceColor {
   White = 0,
   Black = 1,
+}
+
+impl Not for PieceColor {
+  type Output = Self;
+
+  fn not(self) -> Self::Output {
+    // correctly compiles as (self ^ 1)
+    match self {
+      PieceColor::White => PieceColor::Black,
+      PieceColor::Black => PieceColor::White,
+    }
+  }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -241,6 +253,7 @@ fn main() {
 
   let mut board = Board::new();
   let mut selection: Option<(u32, u32)> = None;
+  let mut to_move = PieceColor::White;
 
   loop {
     while let Some(event) = window.poll_event() {
@@ -272,13 +285,17 @@ fn main() {
                 // move piece
                 board[8 * x + y] = board[8 * ox + oy];
                 board[8 * ox + oy] = None;
+                to_move = !to_move;
               }
             }
             selection = None;
           } else {
             // don't allow selecting empty squares
-            if board[8 * x + y] != None {
-              selection = Some((x, y));
+            if let Some(piece) = board[8 * x + y] {
+              // only allow selecting color to move
+              if piece.color == to_move {
+                selection = Some((x, y));
+              }
             }
           }
         }
