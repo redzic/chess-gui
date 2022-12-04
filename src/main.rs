@@ -259,12 +259,22 @@ fn main() {
           println!("click: ({}, {})", x, y);
 
           if let Some((ox, oy)) = selection {
-            if (ox, oy) != (x, y) {
-              // move piece
-              board[8 * x + y] = board[8 * ox + oy];
-              board[8 * ox + oy] = None;
-              selection = None;
+            if let Some(old_piece) = board[8 * ox + oy] {
+              let old_color = old_piece.color;
+
+              let new_piece_isnt_same_color = || {
+                board[8 * x + y]
+                  .map(|p| p.color != old_color)
+                  .unwrap_or(true)
+              };
+
+              if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
+                // move piece
+                board[8 * x + y] = board[8 * ox + oy];
+                board[8 * ox + oy] = None;
+              }
             }
+            selection = None;
           } else {
             // don't allow selecting empty squares
             if board[8 * x + y] != None {
