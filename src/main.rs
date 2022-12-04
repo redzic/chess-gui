@@ -41,6 +41,60 @@ struct Piece {
   color: PieceColor,
 }
 
+const WP: Piece = Piece {
+  class: PieceType::Pawn,
+  color: PieceColor::White,
+};
+const BP: Piece = Piece {
+  class: PieceType::Pawn,
+  color: PieceColor::Black,
+};
+
+const WKN: Piece = Piece {
+  class: PieceType::Knight,
+  color: PieceColor::White,
+};
+const BKN: Piece = Piece {
+  class: PieceType::Knight,
+  color: PieceColor::Black,
+};
+
+const WB: Piece = Piece {
+  class: PieceType::Bishop,
+  color: PieceColor::White,
+};
+const BB: Piece = Piece {
+  class: PieceType::Bishop,
+  color: PieceColor::Black,
+};
+
+const WR: Piece = Piece {
+  class: PieceType::Rook,
+  color: PieceColor::White,
+};
+const BR: Piece = Piece {
+  class: PieceType::Rook,
+  color: PieceColor::Black,
+};
+
+const WQ: Piece = Piece {
+  class: PieceType::Queen,
+  color: PieceColor::White,
+};
+const BQ: Piece = Piece {
+  class: PieceType::Queen,
+  color: PieceColor::Black,
+};
+
+const WK: Piece = Piece {
+  class: PieceType::King,
+  color: PieceColor::White,
+};
+const BK: Piece = Piece {
+  class: PieceType::King,
+  color: PieceColor::Black,
+};
+
 impl Piece {
   // draw the piece on the board
   fn draw(self, (x, y): (u32, u32), window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
@@ -67,6 +121,8 @@ impl Piece {
     window.draw(&sprite);
   }
 }
+
+// support Forsyth–Edwards Notation (FEN) notation
 
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
@@ -138,15 +194,31 @@ fn main() {
       }
     }
 
-    for i in 0..8 {
-      for j in 0..8 {
-        Piece {
-          class: PieceType::King,
-          color: PieceColor::Black,
-        }
-        .draw((i, j), &mut window, &texture_map);
-      }
+    for j in 0..8 {
+      BP.draw((j, 1), &mut window, &texture_map);
+      WP.draw((j, 6), &mut window, &texture_map);
     }
+
+    WR.draw((0, 7), &mut window, &texture_map);
+    WR.draw((7, 7), &mut window, &texture_map);
+    BR.draw((0, 0), &mut window, &texture_map);
+    BR.draw((7, 0), &mut window, &texture_map);
+
+    WKN.draw((1, 7), &mut window, &texture_map);
+    WKN.draw((6, 7), &mut window, &texture_map);
+    BKN.draw((1, 0), &mut window, &texture_map);
+    BKN.draw((6, 0), &mut window, &texture_map);
+
+    WB.draw((2, 7), &mut window, &texture_map);
+    WB.draw((5, 7), &mut window, &texture_map);
+    BB.draw((2, 0), &mut window, &texture_map);
+    BB.draw((5, 0), &mut window, &texture_map);
+
+    BQ.draw((3, 0), &mut window, &texture_map);
+    WQ.draw((3, 7), &mut window, &texture_map);
+
+    BK.draw((4, 0), &mut window, &texture_map);
+    WK.draw((4, 7), &mut window, &texture_map);
 
     window.display()
   }
