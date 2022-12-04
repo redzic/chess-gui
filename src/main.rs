@@ -266,7 +266,7 @@ fn main() {
               selection = None;
             }
           } else {
-            // don't allow selecting empty pieces
+            // don't allow selecting empty squares
             if board[8 * x + y] != None {
               selection = Some((x, y));
             }
