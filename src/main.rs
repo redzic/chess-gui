@@ -295,7 +295,7 @@ fn main() {
     // draw dark squares
     for i in 0..8 {
       for j in 0..8 {
-        if ((i & 1) ^ (j & 1)) != 0 {
+        if (i ^ j) & 1 != 0 {
           rect.set_position(Vector2f::new(
             (SQUARE_SIZE * i) as f32,
             (SQUARE_SIZE * j) as f32,
