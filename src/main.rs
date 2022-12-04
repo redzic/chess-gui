@@ -211,6 +211,36 @@ impl IndexMut<u32> for Board {
   }
 }
 
+fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
+  if let Some(piece) = board[8 * x1 + y1] {
+    if piece.class == PieceType::Pawn {
+      // - capture is also legal sometimes
+      // en pessant as well...
+
+      let y_dist = || y2 as i32 - y1 as i32;
+
+      // rank2 is the rank where 2 moves as a pawn is allowed.
+      let (rank2, file_range, direction) = match piece.color {
+        PieceColor::White => (6, (-2..=-1), -1),
+        PieceColor::Black => (1, (1..=2), 1),
+      };
+
+      if y1 == rank2 {
+        x1 == x2 && file_range.contains(&y_dist())
+      } else {
+        (x2, y2 as i32) == (x1, y1 as i32 + direction)
+      }
+    } else {
+      false
+    }
+  } else {
+    // shouldn't happen
+    debug_assert!(false);
+
+    false
+  }
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -269,7 +299,7 @@ fn main() {
         } => {
           let (x, y) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
 
-          println!("click: ({}, {})", x, y);
+          // println!("click: ({}, {})", x, y);
 
           if let Some((ox, oy)) = selection {
             if let Some(old_piece) = board[8 * ox + oy] {
@@ -282,9 +312,12 @@ fn main() {
               };
 
               if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
+                println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
+
                 // move piece
                 board[8 * x + y] = board[8 * ox + oy];
                 board[8 * ox + oy] = None;
+
                 to_move = !to_move;
               }
             }
