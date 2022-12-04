@@ -225,10 +225,19 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         PieceColor::Black => (1, (1..=2), 1),
       };
 
-      if y1 == rank2 {
-        x1 == x2 && file_range.contains(&y_dist())
+      if let Some(captured_piece) = board[8 * x2 + y2] {
+        // sanity check
+        if captured_piece.color != piece.color {
+          [-1, 1].contains(&(x1 as i32 - x2 as i32)) && y_dist() == direction
+        } else {
+          false
+        }
       } else {
-        (x2, y2 as i32) == (x1, y1 as i32 + direction)
+        if y1 == rank2 {
+          x1 == x2 && file_range.contains(&y_dist())
+        } else {
+          (x2, y2 as i32) == (x1, y1 as i32 + direction)
+        }
       }
     } else {
       false
