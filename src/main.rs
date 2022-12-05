@@ -435,14 +435,17 @@ fn main() {
                 || board[(x, y)].map(|p| p.color != old_color).unwrap_or(true);
 
               if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
-                println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
+                // println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
+                if is_move_legal(&board, (ox, oy), (x, y)) {
+                  // move piece
+                  board[(x, y)] = board[(ox, oy)];
+                  board[(ox, oy)] = None;
 
-                // move piece
-                board[(x, y)] = board[(ox, oy)];
-                board[(ox, oy)] = None;
-
-                to_move = !to_move;
-                println!("{:?}", to_move);
+                  to_move = !to_move;
+                  println!("{:?}", to_move);
+                } else {
+                  println!("Illegal move!");
+                }
               }
             }
             selection = None;
