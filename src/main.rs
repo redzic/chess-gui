@@ -297,6 +297,9 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
     return false;
   }
 
+  // TODO maybe check other obviously ridiculous scenarios here as well,
+  // possibly as a debug assert?
+
   if let Some(piece) = board[(x1, y1)] {
     match piece.class {
       PieceType::Pawn => {
@@ -349,7 +352,12 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
           false
         }
       }
-      PieceType::King => false,
+      PieceType::King => {
+        let xdist = (x1 as i32 - x2 as i32).abs();
+        let ydist = (y1 as i32 - y2 as i32).abs();
+
+        xdist <= 1 && ydist <= 1
+      }
     }
   } else {
     // shouldn't happen
