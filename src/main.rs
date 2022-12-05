@@ -233,6 +233,65 @@ fn sort2<T: Copy + Ord>(x: T, y: T) -> (T, T) {
   }
 }
 
+fn is_bishop_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
+  if (x1 as i32 - x2 as i32).abs() == (y1 as i32 - y2 as i32).abs() {
+    let n_rows = {
+      let (yy1, yy2) = sort2(y1 as i32, y2 as i32);
+      yy2 - yy1 - 1
+    };
+
+    let (mut x1, mut x2, mut y1, mut y2) = (x1, x2, y1, y2);
+
+    if y1 > y2 {
+      // swap (x1, y1) and (x2, y2)
+      swap(&mut x1, &mut x2);
+      swap(&mut y1, &mut y2);
+    }
+
+    let stride = if x1 < x2 { 9 } else { 7 };
+
+    let mut idx = 8 * y1 + x1;
+    for _ in 0..n_rows {
+      idx += stride;
+      if board[idx].is_some() {
+        return false;
+      }
+    }
+
+    true
+  } else {
+    false
+  }
+}
+
+fn is_rook_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
+  let x_match = x1 == x2;
+  if x_match ^ (y1 == y2) {
+    let (x1, x2) = sort2(x1, x2);
+    let (y1, y2) = sort2(y1, y2);
+
+    if x_match {
+      // [(x1, y1 + 1), (x1, y2 - 1)]
+      for y in y1 + 1..=y2 - 1 {
+        if board[(x1, y)].is_some() {
+          return false;
+        }
+      }
+    } else {
+      // [(x1 + 1, y1), (x2 - 1, y1)]
+      for x in x1 + 1..=x2 - 1 {
+        if board[(x, y1)].is_some() {
+          return false;
+        }
+      }
+    }
+
+    true
+  } else {
+    false
+  }
+}
+
 fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
   if (x1, y1) == (x2, y2) {
     return false;
@@ -276,64 +335,20 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
 
         xdist ^ ydist == 1 && xdist & !1 == 0
       }
-      PieceType::Bishop => {
-        if (x1 as i32 - x2 as i32).abs() == (y1 as i32 - y2 as i32).abs() {
-          let n_rows = {
-            let (yy1, yy2) = sort2(y1 as i32, y2 as i32);
-            yy2 - yy1 - 1
-          };
+      PieceType::Bishop => is_bishop_move_legal(board, (x1, y1), (x2, y2)),
+      PieceType::Rook => is_rook_move_legal(board, (x1, y1), (x2, y2)),
+      PieceType::Queen => {
+        let xdist = (x1 as i32 - x2 as i32).abs();
+        let ydist = (y1 as i32 - y2 as i32).abs();
 
-          let (mut x1, mut x2, mut y1, mut y2) = (x1, x2, y1, y2);
-
-          if y1 > y2 {
-            // swap (x1, y1) and (x2, y2)
-            swap(&mut x1, &mut x2);
-            swap(&mut y1, &mut y2);
-          }
-
-          let stride = if x1 < x2 { 9 } else { 7 };
-
-          let mut idx = 8 * y1 + x1;
-          for _ in 0..n_rows {
-            idx += stride;
-            if board[idx].is_some() {
-              return false;
-            }
-          }
-
-          true
+        if xdist == ydist {
+          is_bishop_move_legal(board, (x1, y1), (x2, y2))
+        } else if (xdist == 0) ^ (ydist == 0) {
+          is_rook_move_legal(board, (x1, y1), (x2, y2))
         } else {
           false
         }
       }
-      PieceType::Rook => {
-        let x_match = x1 == x2;
-        if x_match ^ (y1 == y2) {
-          let (x1, x2) = sort2(x1, x2);
-          let (y1, y2) = sort2(y1, y2);
-
-          if x_match {
-            // [(x1, y1 + 1), (x1, y2 - 1)]
-            for y in y1 + 1..=y2 - 1 {
-              if board[(x1, y)].is_some() {
-                return false;
-              }
-            }
-          } else {
-            // [(x1 + 1, y1), (x2 - 1, y1)]
-            for x in x1 + 1..=x2 - 1 {
-              if board[(x, y1)].is_some() {
-                return false;
-              }
-            }
-          }
-
-          true
-        } else {
-          false
-        }
-      }
-      PieceType::Queen => false,
       PieceType::King => false,
     }
   } else {
