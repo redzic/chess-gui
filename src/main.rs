@@ -1,3 +1,4 @@
+use std::mem::swap;
 use std::ops::{Index, IndexMut, Not};
 
 use sfml::graphics::{
@@ -150,35 +151,35 @@ impl Board {
     let mut board = [None; 64];
 
     for j in 0..8 {
-      board[8 * j + 1] = Some(BP);
-      board[8 * j + 6] = Some(WP);
+      board[8 * 1 + j] = Some(BP);
+      board[8 * 6 + j] = Some(WP);
     }
 
-    board[8 * 0 + 7] = Some(WR);
+    board[8 * 7 + 0] = Some(WR);
     board[8 * 7 + 7] = Some(WR);
     board[8 * 0 + 0] = Some(BR);
-    board[8 * 7 + 0] = Some(BR);
-    board[8 * 1 + 7] = Some(WKN);
-    board[8 * 6 + 7] = Some(WKN);
-    board[8 * 1 + 0] = Some(BKN);
-    board[8 * 6 + 0] = Some(BKN);
-    board[8 * 2 + 7] = Some(WB);
-    board[8 * 5 + 7] = Some(WB);
-    board[8 * 2 + 0] = Some(BB);
-    board[8 * 5 + 0] = Some(BB);
-    board[8 * 3 + 0] = Some(BQ);
-    board[8 * 3 + 7] = Some(WQ);
-    board[8 * 4 + 0] = Some(BK);
-    board[8 * 4 + 7] = Some(WK);
+    board[8 * 0 + 7] = Some(BR);
+    board[8 * 7 + 1] = Some(WKN);
+    board[8 * 7 + 6] = Some(WKN);
+    board[8 * 0 + 1] = Some(BKN);
+    board[8 * 0 + 6] = Some(BKN);
+    board[8 * 7 + 2] = Some(WB);
+    board[8 * 7 + 5] = Some(WB);
+    board[8 * 0 + 2] = Some(BB);
+    board[8 * 0 + 5] = Some(BB);
+    board[8 * 0 + 3] = Some(BQ);
+    board[8 * 7 + 3] = Some(WQ);
+    board[8 * 0 + 4] = Some(BK);
+    board[8 * 7 + 4] = Some(WK);
 
     Self { board }
   }
 
   fn draw(&self, window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
-    for i in 0..8 {
-      for j in 0..8 {
-        if let Some(piece) = self.board[8 * i + j] {
-          piece.draw((i as u32, j as u32), window, texture_map);
+    for i in 0..8u32 {
+      for j in 0..8u32 {
+        if let Some(piece) = self[(i, j)] {
+          piece.draw((i, j), window, texture_map);
         }
       }
     }
@@ -202,7 +203,7 @@ impl Index<u32> for Board {
 impl<T: Into<u32>> Index<(T, T)> for Board {
   type Output = Option<Piece>;
   fn index(&self, (x, y): (T, T)) -> &Self::Output {
-    &self.board[8 * x.into() as usize + y.into() as usize]
+    &self.board[8 * y.into() as usize + x.into() as usize]
   }
 }
 
@@ -220,12 +221,24 @@ impl IndexMut<u32> for Board {
 
 impl<T: Into<u32>> IndexMut<(T, T)> for Board {
   fn index_mut(&mut self, (x, y): (T, T)) -> &mut Self::Output {
-    &mut self.board[8 * x.into() as usize + y.into() as usize]
+    &mut self.board[8 * y.into() as usize + x.into() as usize]
+  }
+}
+
+fn sort2<T: Copy + Ord>(x: T, y: T) -> (T, T) {
+  if x < y {
+    (x, y)
+  } else {
+    (y, x)
   }
 }
 
 fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
-  if let Some(piece) = board[8 * x1 + y1] {
+  if (x1, y1) == (x2, y2) {
+    return false;
+  }
+
+  if let Some(piece) = board[(x1, y1)] {
     match piece.class {
       PieceType::Pawn => {
         // en pessant as well...
@@ -254,32 +267,53 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         }
       }
       PieceType::Knight => false,
-      PieceType::Bishop => false,
-      PieceType::Rook => {
-        let x_match = x1 == x2;
-        if x_match ^ (y1 == y2) {
-          fn sort2<T: Copy + Ord>(x: T, y: T) -> (T, T) {
-            if x < y {
-              (x, y)
-            } else {
-              (y, x)
+      PieceType::Bishop => {
+        if (x1 as i32 - x2 as i32).abs() == (y1 as i32 - y2 as i32).abs() {
+          let n_rows = {
+            let (yy1, yy2) = sort2(y1 as i32, y2 as i32);
+            yy2 - yy1 - 1
+          };
+
+          let (mut x1, mut x2, mut y1, mut y2) = (x1, x2, y1, y2);
+
+          if y1 > y2 {
+            // swap (x1, y1) and (x2, y2)
+            swap(&mut x1, &mut x2);
+            swap(&mut y1, &mut y2);
+          }
+
+          let stride = if x1 < x2 { 9 } else { 7 };
+
+          let mut idx = 8 * y1 + x1;
+          for _ in 0..n_rows {
+            idx += stride;
+            if board[idx].is_some() {
+              return false;
             }
           }
 
+          true
+        } else {
+          false
+        }
+      }
+      PieceType::Rook => {
+        let x_match = x1 == x2;
+        if x_match ^ (y1 == y2) {
           let (x1, x2) = sort2(x1, x2);
           let (y1, y2) = sort2(y1, y2);
 
           if x_match {
             // [(x1, y1 + 1), (x1, y2 - 1)]
             for y in y1 + 1..=y2 - 1 {
-              if let Some(_) = board[(x1, y)] {
+              if board[(x1, y)].is_some() {
                 return false;
               }
             }
           } else {
             // [(x1 + 1, y1), (x2 - 1, y1)]
             for x in x1 + 1..=x2 - 1 {
-              if let Some(_) = board[(x, y1)] {
+              if board[(x, y1)].is_some() {
                 return false;
               }
             }
@@ -365,18 +399,21 @@ fn main() {
             if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
-              let new_piece_isnt_same_color = || {
-                board[8 * x + y]
-                  .map(|p| p.color != old_color)
-                  .unwrap_or(true)
-              };
+              let new_piece_isnt_same_color =
+                || board[(x, y)].map(|p| p.color != old_color).unwrap_or(true);
 
               if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
                 println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
 
                 // move piece
-                board[8 * x + y] = board[8 * ox + oy];
-                board[8 * ox + oy] = None;
+                // board[8 * x + y] = board[8 * ox + oy];
+                // board[8 * ox + oy] = None;
+                board[(x, y)] = board[(ox, oy)];
+                board[(ox, oy)] = None;
+
+                // for i in 0..64u32 {
+                //   println!("{:?}", board[i]);
+                // }
 
                 to_move = !to_move;
                 println!("{:?}", to_move);
@@ -385,7 +422,7 @@ fn main() {
             selection = None;
           } else {
             // don't allow selecting empty squares
-            if let Some(piece) = board[8 * x + y] {
+            if let Some(piece) = board[(x, y)] {
               // only allow selecting color to move
               if piece.color == to_move {
                 selection = Some((x, y));
