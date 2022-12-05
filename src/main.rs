@@ -404,14 +404,8 @@ fn main() {
                 println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
 
                 // move piece
-                // board[8 * x + y] = board[8 * ox + oy];
-                // board[8 * ox + oy] = None;
                 board[(x, y)] = board[(ox, oy)];
                 board[(ox, oy)] = None;
-
-                // for i in 0..64u32 {
-                //   println!("{:?}", board[i]);
-                // }
 
                 to_move = !to_move;
                 println!("{:?}", to_move);
