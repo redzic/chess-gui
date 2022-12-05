@@ -199,6 +199,13 @@ impl Index<u32> for Board {
   }
 }
 
+impl<T: Into<u32>> Index<(T, T)> for Board {
+  type Output = Option<Piece>;
+  fn index(&self, (x, y): (T, T)) -> &Self::Output {
+    &self.board[8 * x.into() as usize + y.into() as usize]
+  }
+}
+
 impl IndexMut<usize> for Board {
   fn index_mut(&mut self, index: usize) -> &mut Self::Output {
     &mut self.board[index]
@@ -211,36 +218,80 @@ impl IndexMut<u32> for Board {
   }
 }
 
+impl<T: Into<u32>> IndexMut<(T, T)> for Board {
+  fn index_mut(&mut self, (x, y): (T, T)) -> &mut Self::Output {
+    &mut self.board[8 * x.into() as usize + y.into() as usize]
+  }
+}
+
 fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
   if let Some(piece) = board[8 * x1 + y1] {
-    if piece.class == PieceType::Pawn {
-      // - capture is also legal sometimes
-      // en pessant as well...
+    match piece.class {
+      PieceType::Pawn => {
+        // en pessant as well...
 
-      let y_dist = || y2 as i32 - y1 as i32;
+        let y_dist = || y2 as i32 - y1 as i32;
 
-      // rank2 is the rank where 2 moves as a pawn is allowed.
-      let (rank2, file_range, direction) = match piece.color {
-        PieceColor::White => (6, (-2..=-1), -1),
-        PieceColor::Black => (1, (1..=2), 1),
-      };
+        // rank2 is the rank where 2 moves as a pawn is allowed.
+        let (rank2, file_range, direction) = match piece.color {
+          PieceColor::White => (6, (-2..=-1), -1),
+          PieceColor::Black => (1, (1..=2), 1),
+        };
 
-      if let Some(captured_piece) = board[8 * x2 + y2] {
-        // sanity check
-        if captured_piece.color != piece.color {
-          [-1, 1].contains(&(x1 as i32 - x2 as i32)) && y_dist() == direction
+        if let Some(captured_piece) = board[(x2, y2)] {
+          // sanity check
+          if captured_piece.color != piece.color {
+            (x1 as i32 - x2 as i32).abs() == 1 && y_dist() == direction
+          } else {
+            false
+          }
+        } else {
+          if y1 == rank2 {
+            x1 == x2 && file_range.contains(&y_dist())
+          } else {
+            (x2, y2 as i32) == (x1, y1 as i32 + direction)
+          }
+        }
+      }
+      PieceType::Knight => false,
+      PieceType::Bishop => false,
+      PieceType::Rook => {
+        let x_match = x1 == x2;
+        if x_match ^ (y1 == y2) {
+          fn sort2<T: Copy + Ord>(x: T, y: T) -> (T, T) {
+            if x < y {
+              (x, y)
+            } else {
+              (y, x)
+            }
+          }
+
+          let (x1, x2) = sort2(x1, x2);
+          let (y1, y2) = sort2(y1, y2);
+
+          if x_match {
+            // [(x1, y1 + 1), (x1, y2 - 1)]
+            for y in y1 + 1..=y2 - 1 {
+              if let Some(_) = board[(x1, y)] {
+                return false;
+              }
+            }
+          } else {
+            // [(x1 + 1, y1), (x2 - 1, y1)]
+            for x in x1 + 1..=x2 - 1 {
+              if let Some(_) = board[(x, y1)] {
+                return false;
+              }
+            }
+          }
+
+          true
         } else {
           false
         }
-      } else {
-        if y1 == rank2 {
-          x1 == x2 && file_range.contains(&y_dist())
-        } else {
-          (x2, y2 as i32) == (x1, y1 as i32 + direction)
-        }
       }
-    } else {
-      false
+      PieceType::Queen => false,
+      PieceType::King => false,
     }
   } else {
     // shouldn't happen
@@ -311,7 +362,7 @@ fn main() {
           // println!("click: ({}, {})", x, y);
 
           if let Some((ox, oy)) = selection {
-            if let Some(old_piece) = board[8 * ox + oy] {
+            if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
               let new_piece_isnt_same_color = || {
@@ -328,6 +379,7 @@ fn main() {
                 board[8 * ox + oy] = None;
 
                 to_move = !to_move;
+                println!("{:?}", to_move);
               }
             }
             selection = None;
