@@ -264,7 +264,18 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
         }
       }
-      PieceType::Knight => false,
+      PieceType::Knight => {
+        let xdist = (x1 as i32 - x2 as i32).abs() - 1;
+        let ydist = (y1 as i32 - y2 as i32).abs() - 1;
+
+        // ensure all bits except for lsb are 0
+        // only need to check one of xdist or ydist, since
+        // if all bits except lsb are 0, that means
+        // it REQUIRES all top bits of ydist to also be 0,
+        // otherwise xdist ^ ydist != 1.
+
+        xdist ^ ydist == 1 && xdist & !1 == 0
+      }
       PieceType::Bishop => {
         if (x1 as i32 - x2 as i32).abs() == (y1 as i32 - y2 as i32).abs() {
           let n_rows = {
