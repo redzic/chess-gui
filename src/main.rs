@@ -24,7 +24,7 @@ const QUEEN_XOFF: i32 = -2;
 const KING_XOFF: i32 = 2;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum PieceColor {
+pub enum PieceColor {
   White = 0,
   Black = 1,
 }
@@ -292,11 +292,95 @@ fn is_rook_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32))
   }
 }
 
-pub fn to_offset((x, y): (i32, i32)) -> i32 {
+#[inline(always)]
+pub const fn to_offset((x, y): (i32, i32)) -> i32 {
   8 * y + x
 }
 
+#[inline(always)]
+pub const fn to_coord(idx: u32) -> (u32, u32) {
+  (idx % 8, idx / 8)
+}
+
+// pub fn get_offsets()
+
+pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
+  // loop through all opponent pieces, except for king (debug assert maybe?).
+
+  // for each of the opponent's pieces, check if any of the squares they
+  // attack cover our king.
+
+  // find index of player's king
+  let king_idx = board
+    .board
+    .iter()
+    .position(|&p| {
+      p == Some(Piece {
+        class: PieceType::King,
+        color: player,
+      })
+    })
+    .expect("king should always exist on board");
+
+  // could also maybe just keep track of the board state some other way
+  // to avoid looping through the board?
+  // but I think this is fine for now...
+
+  // loop through opponent's pieces
+  for i in 0..=63 {
+    match board[i as usize] {
+      Some(p) if p.color != player && p.class != PieceType::King => {}
+      _ => {}
+    }
+  }
+
+  false
+}
+
+// vector of offsets maybe?
+fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
+  // we generate offsets, then maybe also check further legality of the move?
+  // i.e. we do not put our own king in check by making this move
+  if let Some(p) = board[(x, y)] {
+    match p.class {
+      PieceType::Knight => {
+        let mut moves = vec![];
+        let possible_moves = [
+          (-2, 1),
+          (-2, -1),
+          (2, 1),
+          (2, -1),
+          (1, -2),
+          (-1, -2),
+          (1, 2),
+          (-1, 2),
+        ];
+
+        // filter out moves that are off the board
+        for (xoff, yoff) in possible_moves {
+          let xn = x as i32 + xoff;
+          let yn = y as i32 + yoff;
+          if (0..=7).contains(&xn)
+            && (0..=7).contains(&yn)
+            && board[(xn as u32, yn as u32)]
+              .map(|p2| p2.color != p.color)
+              .unwrap_or(true)
+          {
+            moves.push((xn as u32, yn as u32));
+          }
+        }
+
+        moves
+      }
+      _ => vec![],
+    }
+  } else {
+    unreachable!("function should not be called on empty square")
+  }
+}
+
 fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
+  // TODO do not allow moves that put your king in check
   if (x1, y1) == (x2, y2) {
     return false;
   }
@@ -361,6 +445,8 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         let ydist = (y1 as i32 - y2 as i32).abs();
 
         if xdist <= 1 && ydist <= 1 {
+          // TODO maybe replace this with more general checking mechanism
+
           // check if opponent's king is in any of the attacked squares
 
           let offsets = [
@@ -444,7 +530,7 @@ fn main() {
   ];
 
   let mut board = Board::new();
-  let mut selection: Option<(u32, u32)> = None;
+  let mut selection: Option<((u32, u32), Vec<(u32, u32)>)> = None;
   let mut to_move = PieceColor::White;
 
   loop {
@@ -463,7 +549,7 @@ fn main() {
 
           // println!("click: ({}, {})", x, y);
 
-          if let Some((ox, oy)) = selection {
+          if let Some(((ox, oy), _)) = selection {
             if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
@@ -471,7 +557,6 @@ fn main() {
                 || board[(x, y)].map(|p| p.color != old_color).unwrap_or(true);
 
               if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
-                // println!("Legal? {}", is_move_legal(&board, (ox, oy), (x, y)));
                 if is_move_legal(&board, (ox, oy), (x, y)) {
                   // move piece
                   board[(x, y)] = board[(ox, oy)];
@@ -490,7 +575,7 @@ fn main() {
             if let Some(piece) = board[(x, y)] {
               // only allow selecting color to move
               if piece.color == to_move {
-                selection = Some((x, y));
+                selection = Some(((x, y), moves_for_piece(&board, (x, y))));
               }
             }
           }
@@ -515,6 +600,19 @@ fn main() {
           ));
           window.draw(&rect);
         }
+      }
+    }
+
+    // (draw other squares here)
+    if let Some(((_, _), offset_array)) = &selection {
+      rect.set_fill_color(Color::rgb(255, 0, 0));
+      for (xd, yd) in offset_array {
+        // let (xd, yd) = to_coord(((*y as i32) * 8 + (*x as i32) + offset) as u32);
+        rect.set_position(Vector2f::new(
+          (SQUARE_SIZE * *xd) as f32,
+          (SQUARE_SIZE * *yd) as f32,
+        ));
+        window.draw(&rect);
       }
     }
 
