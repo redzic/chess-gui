@@ -12,8 +12,8 @@ use sfml::SfBox;
 const SQUARE_SIZE: u32 = 100;
 const WINDOW_SIZE: u32 = 8 * SQUARE_SIZE;
 
-const DARK: Color = Color::rgb(30, 31, 79);
-const LIGHT: Color = Color::rgb(132, 134, 232);
+const DARK: Color = Color::rgb(15, 122, 56);
+const LIGHT: Color = Color::rgb(137, 224, 143);
 
 // x-offsets for displaying
 const PAWN_XOFF: i32 = 10;
