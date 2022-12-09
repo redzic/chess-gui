@@ -234,6 +234,7 @@ impl<T: Into<u32>> IndexMut<(T, T)> for Board {
   }
 }
 
+#[inline(always)]
 fn sort2<T: Copy + Ord>(x: T, y: T) -> (T, T) {
   if x < y {
     (x, y)
@@ -566,7 +567,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         let y_dist = || y2 as i32 - y1 as i32;
 
         // rank2 is the rank where 2 moves as a pawn is allowed.
-        let (rank2, mut file_range, direction) = match piece.color {
+        let (rank2, file_range, direction) = match piece.color {
           PieceColor::White => (6, (-2..=-1), -1),
           PieceColor::Black => (1, (1..=2), 1),
         };
@@ -578,7 +579,8 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         } else if y1 == rank2 {
           x1 == x2
             && file_range.contains(&y_dist())
-            && file_range.all(|r_off| board[(x1, (y1 as i32 + r_off) as u32)].is_none())
+            && (1..=y_dist())
+              .all(|r_off| board[(x1, (y1 as i32 + r_off * direction) as u32)].is_none())
         } else {
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
         }
