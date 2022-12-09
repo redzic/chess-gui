@@ -178,12 +178,6 @@ impl Board {
 
   /// Get copy of board after applying a move.
   fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
-    // if let Some(p) = self[(x2, y2)] {
-    //   if p.class == PieceType::King {
-    //     dbg!("bruh target square is a king");
-    //   }
-    // }
-
     let mut board = *self;
     board[(x2, y2)] = board[(x1, y1)];
     board[(x1, y1)] = None;
@@ -379,7 +373,6 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
 
         for (sx, sy) in squares {
           if (sx, sy) == (kx, ky) {
-            dbg!(p, to_coord(i));
             return true;
           }
         }
@@ -531,7 +524,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
           debug_assert!(inbounds(x as i32, y as i32 + 2 * direction));
 
           let (px, py) = (x, (y as i32 + 2 * direction) as u32);
-          if board[(px, py)].is_none() {
+          if board[(px, py)].is_none() && board[(px, (y as i32 + direction) as u32)].is_none() {
             moves.push((px, py));
           }
         }
@@ -573,20 +566,19 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         let y_dist = || y2 as i32 - y1 as i32;
 
         // rank2 is the rank where 2 moves as a pawn is allowed.
-        let (rank2, file_range, direction) = match piece.color {
+        let (rank2, mut file_range, direction) = match piece.color {
           PieceColor::White => (6, (-2..=-1), -1),
           PieceColor::Black => (1, (1..=2), 1),
         };
 
         if let Some(captured_piece) = board[(x2, y2)] {
-          // sanity check
-          if captured_piece.color != piece.color {
-            (x1 as i32 - x2 as i32).abs() == 1 && y_dist() == direction
-          } else {
-            false
-          }
+          captured_piece.color != piece.color
+            && (x1 as i32 - x2 as i32).abs() == 1
+            && y_dist() == direction
         } else if y1 == rank2 {
-          x1 == x2 && file_range.contains(&y_dist())
+          x1 == x2
+            && file_range.contains(&y_dist())
+            && file_range.all(|r_off| board[(x2, (y2 as i32 + r_off) as u32)].is_none())
         } else {
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
         }
@@ -639,19 +631,6 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
             to_offset(0, 1),
             to_offset(1, 1),
           ];
-
-          // let offsets = [
-          //   to_offset(-1, -1),
-          //   to_offset(0, -1),
-          //   to_offset(1, -1),
-          //   // middle row
-          //   to_offset(0, -1),
-          //   to_offset(0, 1),
-          //   // bottom row
-          //   to_offset(-1, 1),
-          //   to_offset(0, 1),
-          //   to_offset(1, 1),
-          // ];
 
           let base_idx = (8 * y2 + x2) as i32;
           for offset in offsets {
@@ -752,7 +731,7 @@ fn main() {
                 let board_after_move = || board.apply_move((ox, oy), (x, y));
 
                 if is_move_legal(&board, (ox, oy), (x, y))
-                  && !dbg!(is_in_check(&board_after_move(), to_move))
+                  && !is_in_check(&board_after_move(), to_move)
                 {
                   // TODO maybe abstract this away?
                   // move piece
@@ -770,7 +749,7 @@ fn main() {
                   }
 
                   println!("{:?}", to_move);
-                  println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
+                  // println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
                 } else {
                   println!("Illegal move!");
                 }
