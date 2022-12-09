@@ -337,6 +337,11 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   false
 }
 
+#[inline(always)]
+pub fn inbounds(x: i32, y: i32) -> bool {
+  (0..=7).contains(&x) && (0..=7).contains(&y)
+}
+
 // vector of offsets maybe?
 fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
   // we generate offsets, then maybe also check further legality of the move?
@@ -356,17 +361,41 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
           (-1, 2),
         ];
 
-        // filter out moves that are off the board
+        // filter out moves that are off the board and self-capture
         for (xoff, yoff) in possible_moves {
           let xn = x as i32 + xoff;
           let yn = y as i32 + yoff;
-          if (0..=7).contains(&xn)
-            && (0..=7).contains(&yn)
+          if inbounds(xn, yn)
             && board[(xn as u32, yn as u32)]
               .map(|p2| p2.color != p.color)
               .unwrap_or(true)
           {
             moves.push((xn as u32, yn as u32));
+          }
+        }
+
+        moves
+      }
+      PieceType::Rook => {
+        let mut moves = vec![];
+
+        let directions = [(-1, 0), (1, 0), (0, 1), (0, -1)];
+
+        for (xd, yd) in directions {
+          let mut xt = x as i32 + xd;
+          let mut yt = y as i32 + yd;
+          while inbounds(xt, yt) {
+            if let Some(p2) = board[(xt as u32, yt as u32)] {
+              if p2.color != p.color {
+                moves.push((xt as u32, yt as u32));
+              }
+              break;
+            } else {
+              moves.push((xt as u32, yt as u32));
+            }
+
+            xt += xd;
+            yt += yd;
           }
         }
 
