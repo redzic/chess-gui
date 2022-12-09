@@ -451,7 +451,44 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
 
         moves
       }
-      _ => vec![],
+      PieceType::Pawn => {
+        let mut moves = vec![];
+
+        let direction = if p.color == PieceColor::White { -1 } else { 1 };
+
+        // basic move, push forward 1
+        let (bx, by) = (x as i32, y as i32 + direction);
+        if inbounds(bx, by) && board[(bx as u32, by as u32)].is_none() {
+          moves.push((bx as u32, by as u32));
+        }
+
+        // push 2 if on rank 2
+        let push2_rank = if p.color == PieceColor::White { 6 } else { 1 };
+        if y == push2_rank {
+          // sanity check; this should always be in bounds because of the
+          // rank the pawn is on.
+          debug_assert!(inbounds(x as i32, y as i32 + 2 * direction));
+
+          let (px, py) = (x, (y as i32 + 2 * direction) as u32);
+          if board[(px, py)].is_none() {
+            moves.push((px, py));
+          }
+        }
+
+        // sideways attacking moves
+        for xoff in [-1, 1] {
+          let (ax, ay) = (x as i32 + xoff, y as i32 + direction);
+          if inbounds(ax, ay)
+            && board[(ax as u32, ay as u32)]
+              .map(|p2| p2.color != p.color)
+              .unwrap_or(false)
+          {
+            moves.push((ax as u32, ay as u32));
+          }
+        }
+
+        moves
+      }
     }
   } else {
     unreachable!("function should not be called on empty square")
