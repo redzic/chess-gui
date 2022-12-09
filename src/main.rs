@@ -578,7 +578,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         } else if y1 == rank2 {
           x1 == x2
             && file_range.contains(&y_dist())
-            && file_range.all(|r_off| board[(x2, (y2 as i32 + r_off) as u32)].is_none())
+            && file_range.all(|r_off| board[(x1, (y1 as i32 + r_off) as u32)].is_none())
         } else {
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
         }
