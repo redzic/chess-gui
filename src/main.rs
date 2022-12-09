@@ -613,41 +613,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
         let xdist = (x1 as i32 - x2 as i32).abs();
         let ydist = (y1 as i32 - y2 as i32).abs();
 
-        if xdist <= 1 && ydist <= 1 {
-          // TODO maybe replace this with more general checking mechanism
-
-          // check if opponent's king is in any of the attacked squares
-
-          let offsets = [
-            // top row
-            to_offset(-1, -1),
-            to_offset(0, -1),
-            to_offset(1, -1),
-            // middle row
-            to_offset(-1, 0),
-            to_offset(1, 0),
-            // bottom row
-            to_offset(-1, 1),
-            to_offset(0, 1),
-            to_offset(1, 1),
-          ];
-
-          let base_idx = (8 * y2 + x2) as i32;
-          for offset in offsets {
-            let idx = base_idx + offset;
-            if (0..=63).contains(&idx) {
-              if let Some(piece_in_range) = board[idx as usize] {
-                if piece_in_range.class == PieceType::King && piece_in_range.color != piece.color {
-                  return false;
-                }
-              }
-            }
-          }
-
-          true
-        } else {
-          false
-        }
+        xdist <= 1 && ydist <= 1
       }
     }
   } else {
