@@ -304,6 +304,10 @@ pub const fn to_coord(idx: u32) -> (u32, u32) {
 
 // pub fn get_offsets()
 
+// maybe keep track of what moves were played so that it is easy
+// to revert them, to avoid making copies of the board to check
+// for check.
+
 pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   // loop through all opponent pieces, except for king (debug assert maybe?).
 
@@ -320,7 +324,7 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
         color: player,
       })
     })
-    .expect("king should always exist on board");
+    .expect("king should always exist on board") as u32;
 
   // could also maybe just keep track of the board state some other way
   // to avoid looping through the board?
@@ -329,7 +333,16 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   // loop through opponent's pieces
   for i in 0..=63 {
     match board[i as usize] {
-      Some(p) if p.color != player && p.class != PieceType::King => {}
+      Some(p) if p.color != player && p.class != PieceType::King => {
+        // check if any of their moves covers our king
+        let squares = moves_for_piece(board, to_coord(i));
+        if squares
+          .iter()
+          .any(|&(sx, sy)| king_idx == to_offset(sx as i32, sy as i32) as u32)
+        {
+          return true;
+        }
+      }
       _ => {}
     }
   }
@@ -687,6 +700,7 @@ fn main() {
 
                   to_move = !to_move;
                   println!("{:?}", to_move);
+                  println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
                 } else {
                   println!("Illegal move!");
                 }
