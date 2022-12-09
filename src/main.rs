@@ -424,6 +424,33 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
       PieceType::Rook => moves_for_sliding_piece(board, (x, y), &ROOK_DIRECTIONS),
       PieceType::Bishop => moves_for_sliding_piece(board, (x, y), &BISHOP_DIRECTIONS),
       PieceType::Queen => moves_for_sliding_piece(board, (x, y), &QUEEN_DIRECTIONS),
+      PieceType::King => {
+        let mut moves = vec![];
+
+        let move_offsets = [
+          (-1, -1),
+          (0, -1),
+          (1, -1),
+          (-1, 0),
+          (1, 0),
+          (-1, 1),
+          (0, 1),
+          (1, 1),
+        ];
+
+        for (xoff, yoff) in move_offsets {
+          let (xd, yd) = (x as i32 + xoff, y as i32 + yoff);
+          if inbounds(xd, yd)
+            && board[(xd as u32, yd as u32)]
+              .map(|p2| p2.color != p.color)
+              .unwrap_or(true)
+          {
+            moves.push((xd as u32, yd as u32));
+          }
+        }
+
+        moves
+      }
       _ => vec![],
     }
   } else {
