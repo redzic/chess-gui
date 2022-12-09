@@ -342,6 +342,51 @@ pub fn inbounds(x: i32, y: i32) -> bool {
   (0..=7).contains(&x) && (0..=7).contains(&y)
 }
 
+fn moves_for_sliding_piece(
+  board: &Board,
+  (x, y): (u32, u32),
+  directions: &[(i32, i32)],
+) -> Vec<(u32, u32)> {
+  if let Some(p) = board[(x, y)] {
+    let mut moves = vec![];
+
+    for (xd, yd) in directions {
+      let mut xt = x as i32 + xd;
+      let mut yt = y as i32 + yd;
+      while inbounds(xt, yt) {
+        if let Some(p2) = board[(xt as u32, yt as u32)] {
+          if p2.color != p.color {
+            moves.push((xt as u32, yt as u32));
+          }
+          break;
+        } else {
+          moves.push((xt as u32, yt as u32));
+        }
+
+        xt += xd;
+        yt += yd;
+      }
+    }
+
+    moves
+  } else {
+    unreachable!()
+  }
+}
+
+static ROOK_DIRECTIONS: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, 1), (0, -1)];
+static BISHOP_DIRECTIONS: [(i32, i32); 4] = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+static QUEEN_DIRECTIONS: [(i32, i32); 8] = [
+  (-1, 0),
+  (1, 0),
+  (0, 1),
+  (0, -1),
+  (-1, -1),
+  (-1, 1),
+  (1, -1),
+  (1, 1),
+];
+
 // vector of offsets maybe?
 fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
   // we generate offsets, then maybe also check further legality of the move?
@@ -376,31 +421,9 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
 
         moves
       }
-      PieceType::Rook => {
-        let mut moves = vec![];
-
-        let directions = [(-1, 0), (1, 0), (0, 1), (0, -1)];
-
-        for (xd, yd) in directions {
-          let mut xt = x as i32 + xd;
-          let mut yt = y as i32 + yd;
-          while inbounds(xt, yt) {
-            if let Some(p2) = board[(xt as u32, yt as u32)] {
-              if p2.color != p.color {
-                moves.push((xt as u32, yt as u32));
-              }
-              break;
-            } else {
-              moves.push((xt as u32, yt as u32));
-            }
-
-            xt += xd;
-            yt += yd;
-          }
-        }
-
-        moves
-      }
+      PieceType::Rook => moves_for_sliding_piece(board, (x, y), &ROOK_DIRECTIONS),
+      PieceType::Bishop => moves_for_sliding_piece(board, (x, y), &BISHOP_DIRECTIONS),
+      PieceType::Queen => moves_for_sliding_piece(board, (x, y), &QUEEN_DIRECTIONS),
       _ => vec![],
     }
   } else {
