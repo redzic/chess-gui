@@ -347,6 +347,13 @@ fn moves_for_sliding_piece(
   (x, y): (u32, u32),
   directions: &[(i32, i32)],
 ) -> Vec<(u32, u32)> {
+  debug_assert!(board[(x, y)]
+    .map(|p| matches!(
+      p.class,
+      PieceType::Rook | PieceType::Bishop | PieceType::Queen
+    ))
+    .unwrap_or(false));
+
   if let Some(p) = board[(x, y)] {
     let mut moves = vec![];
 
