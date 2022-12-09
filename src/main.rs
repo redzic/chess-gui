@@ -293,7 +293,7 @@ fn is_rook_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32))
 }
 
 #[inline(always)]
-pub const fn to_offset((x, y): (i32, i32)) -> i32 {
+pub const fn to_offset(x: i32, y: i32) -> i32 {
   8 * y + x
 }
 
@@ -567,16 +567,16 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
 
           let offsets = [
             // top row
-            to_offset((-1, -1)),
-            to_offset((0, -1)),
-            to_offset((1, -1)),
+            to_offset(-1, -1),
+            to_offset(0, -1),
+            to_offset(1, -1),
             // middle row
-            to_offset((0, -1)),
-            to_offset((0, 1)),
+            to_offset(-1, 0),
+            to_offset(1, 0),
             // bottom row
-            to_offset((-1, 1)),
-            to_offset((0, 1)),
-            to_offset((1, 1)),
+            to_offset(-1, 1),
+            to_offset(0, 1),
+            to_offset(1, 1),
           ];
 
           let base_idx = (8 * y2 + x2) as i32;
