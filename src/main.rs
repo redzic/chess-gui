@@ -142,6 +142,7 @@ impl Piece {
 
 type BoardState = Option<Piece>;
 
+#[derive(Copy, Clone)]
 pub struct Board {
   board: [BoardState; 64],
 }
@@ -173,6 +174,20 @@ impl Board {
     board[8 * 7 + 4] = Some(WK);
 
     Self { board }
+  }
+
+  /// Get copy of board after applying a move.
+  fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
+    // if let Some(p) = self[(x2, y2)] {
+    //   if p.class == PieceType::King {
+    //     dbg!("bruh target square is a king");
+    //   }
+    // }
+
+    let mut board = *self;
+    board[(x2, y2)] = board[(x1, y1)];
+    board[(x1, y1)] = None;
+    board
   }
 
   fn draw(&self, window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
@@ -264,6 +279,7 @@ fn is_bishop_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32
   }
 }
 
+// doesn't check for self-capture as that is checked universally for all moves.
 fn is_rook_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
   let x_match = x1 == x2;
   if x_match ^ (y1 == y2) {
@@ -308,6 +324,27 @@ pub const fn to_coord(idx: u32) -> (u32, u32) {
 // to revert them, to avoid making copies of the board to check
 // for check.
 
+pub fn is_in_checkmate(board: &Board, player: PieceColor) -> bool {
+  // loop through possible all moves, see if any of them do not put you in check
+
+  for i in 0..=63 {
+    match board[i as usize] {
+      Some(p) if p.color == player => {
+        let (x, y) = to_coord(i);
+        let moves = moves_for_piece(board, (x, y));
+        for mv in moves {
+          if !is_in_check(&board.apply_move((x, y), mv), player) {
+            return false;
+          }
+        }
+      }
+      _ => {}
+    }
+  }
+
+  true
+}
+
 pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   // loop through all opponent pieces, except for king (debug assert maybe?).
 
@@ -315,16 +352,18 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   // attack cover our king.
 
   // find index of player's king
-  let king_idx = board
-    .board
-    .iter()
-    .position(|&p| {
-      p == Some(Piece {
-        class: PieceType::King,
-        color: player,
+  let (kx, ky) = to_coord(
+    board
+      .board
+      .iter()
+      .position(|&p| {
+        p == Some(Piece {
+          class: PieceType::King,
+          color: player,
+        })
       })
-    })
-    .expect("king should always exist on board") as u32;
+      .expect("king should always exist on board") as u32,
+  );
 
   // could also maybe just keep track of the board state some other way
   // to avoid looping through the board?
@@ -333,14 +372,16 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
   // loop through opponent's pieces
   for i in 0..=63 {
     match board[i as usize] {
-      Some(p) if p.color != player && p.class != PieceType::King => {
+      // Some(p) if p.color != player && p.class != PieceType::King => {
+      Some(p) if p.color != player => {
         // check if any of their moves covers our king
         let squares = moves_for_piece(board, to_coord(i));
-        if squares
-          .iter()
-          .any(|&(sx, sy)| king_idx == to_offset(sx as i32, sy as i32) as u32)
-        {
-          return true;
+
+        for (sx, sy) in squares {
+          if (sx, sy) == (kx, ky) {
+            dbg!(p, to_coord(i));
+            return true;
+          }
         }
       }
       _ => {}
@@ -599,6 +640,19 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
             to_offset(1, 1),
           ];
 
+          // let offsets = [
+          //   to_offset(-1, -1),
+          //   to_offset(0, -1),
+          //   to_offset(1, -1),
+          //   // middle row
+          //   to_offset(0, -1),
+          //   to_offset(0, 1),
+          //   // bottom row
+          //   to_offset(-1, 1),
+          //   to_offset(0, 1),
+          //   to_offset(1, 1),
+          // ];
+
           let base_idx = (8 * y2 + x2) as i32;
           for offset in offsets {
             let idx = base_idx + offset;
@@ -693,12 +747,28 @@ fn main() {
                 || board[(x, y)].map(|p| p.color != old_color).unwrap_or(true);
 
               if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
-                if is_move_legal(&board, (ox, oy), (x, y)) {
+                // move needs to be legal AND cannot put us in check after we do it
+
+                let board_after_move = || board.apply_move((ox, oy), (x, y));
+
+                if is_move_legal(&board, (ox, oy), (x, y))
+                  && !dbg!(is_in_check(&board_after_move(), to_move))
+                {
+                  // TODO maybe abstract this away?
                   // move piece
                   board[(x, y)] = board[(ox, oy)];
                   board[(ox, oy)] = None;
 
+                  println!("({ox}, {oy}) -> ({x}, {y})");
+
                   to_move = !to_move;
+
+                  // gg
+                  if is_in_checkmate(&board, to_move) {
+                    println!("Checkmate! {:?} wins.", !to_move);
+                    return;
+                  }
+
                   println!("{:?}", to_move);
                   println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
                 } else {
@@ -712,7 +782,17 @@ fn main() {
             if let Some(piece) = board[(x, y)] {
               // only allow selecting color to move
               if piece.color == to_move {
-                selection = Some(((x, y), moves_for_piece(&board, (x, y))));
+                // ok something is not working...
+                let mut moves = moves_for_piece(&board, (x, y));
+
+                // retain moves that don't put us in check
+                // closure returns false for illegal moves, true for legal
+                moves.retain(|&(x2, y2)| {
+                  let board_after_move = board.apply_move((x, y), (x2, y2));
+                  !is_in_check(&board_after_move, to_move)
+                });
+
+                selection = Some(((x, y), moves));
               }
             }
           }
