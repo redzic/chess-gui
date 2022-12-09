@@ -66,11 +66,11 @@ const BP: Piece = Piece {
   color: PieceColor::Black,
 };
 
-const WKN: Piece = Piece {
+const WN: Piece = Piece {
   class: PieceType::Knight,
   color: PieceColor::White,
 };
-const BKN: Piece = Piece {
+const BN: Piece = Piece {
   class: PieceType::Knight,
   color: PieceColor::Black,
 };
@@ -159,10 +159,10 @@ impl Board {
     board[8 * 7 + 7] = Some(WR);
     board[8 * 0 + 0] = Some(BR);
     board[8 * 0 + 7] = Some(BR);
-    board[8 * 7 + 1] = Some(WKN);
-    board[8 * 7 + 6] = Some(WKN);
-    board[8 * 0 + 1] = Some(BKN);
-    board[8 * 0 + 6] = Some(BKN);
+    board[8 * 7 + 1] = Some(WN);
+    board[8 * 7 + 6] = Some(WN);
+    board[8 * 0 + 1] = Some(BN);
+    board[8 * 0 + 6] = Some(BN);
     board[8 * 7 + 2] = Some(WB);
     board[8 * 7 + 5] = Some(WB);
     board[8 * 0 + 2] = Some(BB);
