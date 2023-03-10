@@ -1,5 +1,5 @@
 use std::mem::swap;
-use std::ops::{Index, IndexMut, Not};
+use std::ops::{Index, IndexMut};
 
 use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
@@ -15,101 +15,9 @@ const WINDOW_SIZE: u32 = 8 * SQUARE_SIZE;
 const DARK: Color = Color::rgb(15, 122, 56);
 const LIGHT: Color = Color::rgb(137, 224, 143);
 
-// x-offsets for displaying
-const PAWN_XOFF: i32 = 10;
-const KNIGHT_XOFF: i32 = 5;
-const ROOK_XOFF: i32 = 6;
-const BISHOP_XOFF: i32 = 3;
-const QUEEN_XOFF: i32 = -2;
-const KING_XOFF: i32 = 2;
+mod piece;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum PieceColor {
-  White = 0,
-  Black = 1,
-}
-
-impl Not for PieceColor {
-  type Output = Self;
-
-  fn not(self) -> Self::Output {
-    // correctly compiles as (self ^ 1)
-    match self {
-      PieceColor::White => PieceColor::Black,
-      PieceColor::Black => PieceColor::White,
-    }
-  }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum PieceType {
-  Pawn = 0,
-  Knight = 1,
-  Bishop = 2,
-  Rook = 3,
-  Queen = 4,
-  King = 5,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Piece {
-  class: PieceType,
-  color: PieceColor,
-}
-
-const WP: Piece = Piece {
-  class: PieceType::Pawn,
-  color: PieceColor::White,
-};
-const BP: Piece = Piece {
-  class: PieceType::Pawn,
-  color: PieceColor::Black,
-};
-
-const WN: Piece = Piece {
-  class: PieceType::Knight,
-  color: PieceColor::White,
-};
-const BN: Piece = Piece {
-  class: PieceType::Knight,
-  color: PieceColor::Black,
-};
-
-const WB: Piece = Piece {
-  class: PieceType::Bishop,
-  color: PieceColor::White,
-};
-const BB: Piece = Piece {
-  class: PieceType::Bishop,
-  color: PieceColor::Black,
-};
-
-const WR: Piece = Piece {
-  class: PieceType::Rook,
-  color: PieceColor::White,
-};
-const BR: Piece = Piece {
-  class: PieceType::Rook,
-  color: PieceColor::Black,
-};
-
-const WQ: Piece = Piece {
-  class: PieceType::Queen,
-  color: PieceColor::White,
-};
-const BQ: Piece = Piece {
-  class: PieceType::Queen,
-  color: PieceColor::Black,
-};
-
-const WK: Piece = Piece {
-  class: PieceType::King,
-  color: PieceColor::White,
-};
-const BK: Piece = Piece {
-  class: PieceType::King,
-  color: PieceColor::Black,
-};
+use crate::piece::*;
 
 impl Piece {
   // draw the piece on the board
