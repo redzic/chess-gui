@@ -17,6 +17,8 @@ const LIGHT: Color = Color::rgb(137, 224, 143);
 
 mod piece;
 
+use crate::piece::PieceColor::*;
+use crate::piece::PieceType::*;
 use crate::piece::*;
 
 impl Piece {
@@ -50,7 +52,7 @@ impl Piece {
 
 type BoardState = Option<Piece>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Board {
   board: [BoardState; 64],
   // index 0 - white,
@@ -59,6 +61,7 @@ pub struct Board {
 }
 
 impl Board {
+  // standard board setup
   fn new() -> Self {
     let mut board = [None; 64];
 
@@ -463,6 +466,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
         }
 
         let rank_yidx = if p.color.is_white() { 7u32 } else { 0 };
+        // let king_orig_xidx = if p.color.is_white()
         if board.castling_rights[p.color as usize] && y == rank_yidx {
           // add castling moves
           // TODO update castling rights for each rook
@@ -481,7 +485,6 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
                 let mut idxs: [u32; 2] = [x, rook_idx];
                 idxs.sort();
 
-                dbg!("CALLING IN MOVES_FOR_PIECE");
                 if !do_pieces_exist_x1x2(board, rank_yidx, (idxs[0] + 1, idxs[1] - 1)) {
                   // if no pieces exist in between and we have castling rights, we can
                   // add this as a move
@@ -543,7 +546,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
 
 // check if any pieces exist on a certain rank between x1 and x2 (inclusive)
 fn do_pieces_exist_x1x2(board: &Board, rank_idx: u32, (x1, x2): (u32, u32)) -> bool {
-  debug_assert!(dbg!(x1) <= dbg!(x2));
+  debug_assert!(x1 <= x2);
 
   for x in x1..=x2 {
     if board[(x, rank_idx)].is_some() {
@@ -625,9 +628,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
           }
           2 => {
             let rank_idx = if piece.color.is_white() { 7 } else { 0 };
-            // (4, 7) - white
-            // (3, 0) - black
-            let file_idx = if piece.color.is_white() { 4 } else { 3 };
+            let file_idx = 4;
             if y1 != y2 || y1 != rank_idx {
               return false;
             }
@@ -640,8 +641,6 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
               return false;
             }
 
-            // if
-
             // in terms of x index, not necessarily from player's perspective
             let is_rook_right = x2 > x1;
             let rook_idx = if is_rook_right { 7 } else { 0 };
@@ -649,7 +648,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
             if let Some(Piece {
               class: PieceType::Rook,
               color,
-            }) = board[(rank_idx, rook_idx)]
+            }) = board[(rook_idx, rank_idx)]
             {
               if color != piece.color {
                 return false;
@@ -662,16 +661,9 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
             xidx.sort();
 
             // TODO also check castle THROUGH check here
-            dbg!("CALLING DO PIECES EXIST IN IS_MOVE_LEGAL");
             if do_pieces_exist_x1x2(board, y1, (xidx[0] + 1, xidx[1] - 1)) {
               return false;
             }
-
-            // for x in xidx[0] + 1..xidx[1] {
-            //   if board[(x, y1)].is_some() {
-            //     return false;
-            //   }
-            // }
 
             true
           }
@@ -729,7 +721,8 @@ fn main() {
 
   let mut board = Board::new();
   let mut selection: Option<((u32, u32), Vec<(u32, u32)>)> = None;
-  let mut to_move = PieceColor::White;
+  // let mut to_move = PieceColor::White;
+  let mut to_move = PieceColor::Black;
 
   loop {
     while let Some(event) = window.poll_event() {
@@ -738,6 +731,14 @@ fn main() {
         | Event::KeyPressed {
           code: Key::Escape, ..
         } => return,
+
+        // dump board
+        Event::KeyPressed {
+          code: Key::Space, ..
+        } => {
+          dbg!(&board);
+        }
+
         Event::MouseButtonPressed {
           button: Button::Left,
           x,
@@ -759,8 +760,8 @@ fn main() {
 
                 let board_after_move = || board.apply_move((ox, oy), (x, y));
 
-                if is_move_legal(&board, (ox, oy), (x, y))
-                  && !is_in_check(&board_after_move(), to_move)
+                if dbg!(is_move_legal(&board, (ox, oy), (x, y)))
+                  && !dbg!(is_in_check(&board_after_move(), to_move))
                 {
                   board = board_after_move();
 
@@ -837,6 +838,9 @@ fn main() {
         window.draw(&rect);
       }
     }
+
+    // - don't select square if there's like no legal moves
+    // otherwise you have to do confusing double click
 
     board.draw(&mut window, &texture_map);
 
