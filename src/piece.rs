@@ -26,6 +26,18 @@ impl Not for PieceColor {
   }
 }
 
+impl PieceColor {
+  #[inline]
+  pub fn is_white(self) -> bool {
+    self == PieceColor::White
+  }
+
+  #[inline]
+  pub fn is_black(self) -> bool {
+    self == PieceColor::Black
+  }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceType {
   Pawn = 0,

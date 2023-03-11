@@ -103,7 +103,7 @@ impl Board {
       // direction
       let is_rook_right = x2 > x1;
       let color = board[(x1, y1)].unwrap().color;
-      let rank_idx = if color == PieceColor::White { 7 } else { 0 };
+      let rank_idx = if color.is_white() { 7 } else { 0 };
       let rook_idx = if is_rook_right { 7 } else { 0 };
 
       assert!(y1 == y2 && y1 == rank_idx);
@@ -121,12 +121,12 @@ impl Board {
       // move king
       board
         .board
-        .swap((8 * x1 + y1) as usize, (8 * x2 + y2) as usize);
+        .swap((8 * y1 + x1) as usize, (8 * y2 + x2) as usize);
 
       let new_rook_x = if is_rook_right { x1 + 1 } else { x1 - 1 };
       board
         .board
-        .swap((8 * rook_idx + y1) as usize, (8 * new_rook_x + y1) as usize);
+        .swap((8 * y1 + rook_idx) as usize, (8 * y1 + new_rook_x) as usize);
 
       board.castling_rights[color as usize] = false;
 
@@ -400,7 +400,7 @@ static QUEEN_DIRECTIONS: [(i32, i32); 8] = [
   (1, 1),
 ];
 
-// vector of offsets maybe?
+// return vector of final coordinates for piece
 fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
   // we generate offsets, then maybe also check further legality of the move?
   // i.e. we do not put our own king in check by making this move
@@ -462,12 +462,45 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
           }
         }
 
+        let rank_yidx = if p.color.is_white() { 7u32 } else { 0 };
+        if board.castling_rights[p.color as usize] && y == rank_yidx {
+          // add castling moves
+          // TODO update castling rights for each rook
+          // TODO maybe also check that king is on original square,
+          // but maybe this can be done with accurate castling rights.
+
+          for rook_idx in [0, 7] {
+            if let Some(Piece {
+              class: PieceType::Rook,
+              color,
+            }) = board[(rook_idx, rank_yidx)]
+            {
+              if color == p.color {
+                // maybe add
+
+                let mut idxs: [u32; 2] = [x, rook_idx];
+                idxs.sort();
+
+                dbg!("CALLING IN MOVES_FOR_PIECE");
+                if !do_pieces_exist_x1x2(board, rank_yidx, (idxs[0] + 1, idxs[1] - 1)) {
+                  // if no pieces exist in between and we have castling rights, we can
+                  // add this as a move
+                  let is_rook_right = rook_idx > x;
+                  let king_xoff: i32 = if is_rook_right { 2 } else { -2 };
+
+                  moves.push(((x as i32 + king_xoff).try_into().unwrap(), rank_yidx));
+                }
+              }
+            }
+          }
+        }
+
         moves
       }
       PieceType::Pawn => {
         let mut moves = vec![];
 
-        let direction = if p.color == PieceColor::White { -1 } else { 1 };
+        let direction = if p.color.is_white() { -1 } else { 1 };
 
         // basic move, push forward 1
         let (bx, by) = (x as i32, y as i32 + direction);
@@ -476,7 +509,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
         }
 
         // push 2 if on rank 2
-        let push2_rank = if p.color == PieceColor::White { 6 } else { 1 };
+        let push2_rank = if p.color.is_white() { 6 } else { 1 };
         if y == push2_rank {
           // sanity check; this should always be in bounds because of the
           // rank the pawn is on.
@@ -506,6 +539,19 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
   } else {
     unreachable!("function should not be called on empty square")
   }
+}
+
+// check if any pieces exist on a certain rank between x1 and x2 (inclusive)
+fn do_pieces_exist_x1x2(board: &Board, rank_idx: u32, (x1, x2): (u32, u32)) -> bool {
+  debug_assert!(dbg!(x1) <= dbg!(x2));
+
+  for x in x1..=x2 {
+    if board[(x, rank_idx)].is_some() {
+      return true;
+    }
+  }
+
+  false
 }
 
 fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
@@ -571,9 +617,66 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
       }
       PieceType::King => {
         let xdist = (x1 as i32 - x2 as i32).abs();
-        let ydist = (y1 as i32 - y2 as i32).abs();
 
-        xdist <= 1 && ydist <= 1
+        match xdist {
+          0 | 1 => {
+            let ydist = (y1 as i32 - y2 as i32).abs();
+            ydist <= 1
+          }
+          2 => {
+            let rank_idx = if piece.color.is_white() { 7 } else { 0 };
+            // (4, 7) - white
+            // (3, 0) - black
+            let file_idx = if piece.color.is_white() { 4 } else { 3 };
+            if y1 != y2 || y1 != rank_idx {
+              return false;
+            }
+            if x1 != file_idx {
+              return false;
+            }
+
+            // ensure castling rights exist
+            if !board.castling_rights[piece.color as usize] {
+              return false;
+            }
+
+            // if
+
+            // in terms of x index, not necessarily from player's perspective
+            let is_rook_right = x2 > x1;
+            let rook_idx = if is_rook_right { 7 } else { 0 };
+
+            if let Some(Piece {
+              class: PieceType::Rook,
+              color,
+            }) = board[(rank_idx, rook_idx)]
+            {
+              if color != piece.color {
+                return false;
+              }
+            } else {
+              return false;
+            }
+
+            let mut xidx = [x1, rook_idx];
+            xidx.sort();
+
+            // TODO also check castle THROUGH check here
+            dbg!("CALLING DO PIECES EXIST IN IS_MOVE_LEGAL");
+            if do_pieces_exist_x1x2(board, y1, (xidx[0] + 1, xidx[1] - 1)) {
+              return false;
+            }
+
+            // for x in xidx[0] + 1..xidx[1] {
+            //   if board[(x, y1)].is_some() {
+            //     return false;
+            //   }
+            // }
+
+            true
+          }
+          _ => false,
+        }
       }
     }
   } else {
@@ -659,10 +762,7 @@ fn main() {
                 if is_move_legal(&board, (ox, oy), (x, y))
                   && !is_in_check(&board_after_move(), to_move)
                 {
-                  // TODO maybe abstract this away?
-                  // move piece
-                  board[(x, y)] = board[(ox, oy)];
-                  board[(ox, oy)] = None;
+                  board = board_after_move();
 
                   println!("({ox}, {oy}) -> ({x}, {y})");
 
