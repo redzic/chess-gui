@@ -17,8 +17,6 @@ const LIGHT: Color = Color::rgb(137, 224, 143);
 
 mod piece;
 
-use crate::piece::PieceColor::*;
-use crate::piece::PieceType::*;
 use crate::piece::*;
 
 impl Piece {
@@ -93,334 +91,6 @@ impl Board {
     }
   }
 
-  // --- CASTLING DEBUG
-
-  // black to move
-  fn new2() -> Self {
-    Board {
-      board: [
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: King,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        Some(Piece {
-          class: Queen,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        None,
-        Some(Piece {
-          class: Queen,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: King,
-          color: White,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-      ],
-      castling_rights: [true, true],
-    }
-  }
-
-  // white to move
-  fn new3() -> Self {
-    Board {
-      board: [
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        None,
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Queen,
-          color: Black,
-        }),
-        Some(Piece {
-          class: King,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        None,
-        None,
-        Some(Piece {
-          class: Queen,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: King,
-          color: White,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-      ],
-      castling_rights: [true, true],
-    }
-  }
-
   /// Get copy of board after applying a move.
   fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
     let mut board = *self;
@@ -466,6 +136,19 @@ impl Board {
       // handle pawn promotions
       unreachable!()
     } else {
+      // TODO make sure after pawn promotion, you cannot promote to rook
+      // and castle with that rook
+      // although that shouldn't be possible if the original rooks don't move
+      // or get captured, in which case you lose castling rights anyway.
+
+      if let Some(piece) = board[(x1, y1)] {
+        if matches!(piece.class, PieceType::King | PieceType::Rook) {
+          board.castling_rights[piece.color as usize] = false;
+        }
+      } else {
+        unreachable!()
+      }
+
       // TODO remove castling rights here also
       board[(x2, y2)] = board[(x1, y1)];
       board[(x1, y1)] = None;
@@ -1049,7 +732,6 @@ fn main() {
   let mut board = Board::new();
   let mut selection: Option<((u32, u32), Vec<(u32, u32)>)> = None;
   let mut to_move = PieceColor::White;
-  // let mut to_move = PieceColor::Black;
 
   loop {
     while let Some(event) = window.poll_event() {
