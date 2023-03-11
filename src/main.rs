@@ -1,4 +1,4 @@
-use std::mem::swap;
+use std::mem::{self, swap};
 use std::ops::{Index, IndexMut};
 
 use sfml::graphics::{
@@ -42,6 +42,32 @@ impl Piece {
       ((x * SQUARE_SIZE) as i32 + offset) as f32,
       (y * SQUARE_SIZE) as f32,
     ));
+    window.draw(&sprite);
+  }
+
+  fn draw_precise(
+    self,
+    (x, y): (i32, i32),
+    window: &mut RenderWindow,
+    texture_map: &[SfBox<Texture>; 12],
+  ) {
+    let idx = self.color as usize * 6 + self.class as usize;
+    let texture = &texture_map[idx];
+
+    // maybe reuse sprites? idk if that affects anything...
+    let mut sprite = Sprite::new();
+    sprite.set_texture(&texture, false);
+
+    let offset = match self.class {
+      PieceType::Pawn => PAWN_XOFF,
+      PieceType::Knight => KNIGHT_XOFF,
+      PieceType::Bishop => BISHOP_XOFF,
+      PieceType::Rook => ROOK_XOFF,
+      PieceType::Queen => QUEEN_XOFF,
+      PieceType::King => KING_XOFF,
+    };
+
+    sprite.set_position(Vector2f::new((x + offset) as f32, y as f32));
     window.draw(&sprite);
   }
 }
@@ -730,7 +756,7 @@ fn main() {
   ];
 
   let mut board = Board::new();
-  let mut selection: Option<((u32, u32), Vec<(u32, u32)>)> = None;
+  let mut selection: Option<((u32, u32), (i32, i32), Vec<(u32, u32)>)> = None;
   let mut to_move = PieceColor::White;
 
   loop {
@@ -748,6 +774,12 @@ fn main() {
           dbg!(&board);
         }
 
+        Event::MouseMoved { x, y } => {
+          if let Some((_, point, _)) = &mut selection {
+            *point = (x, y);
+          }
+        }
+
         Event::MouseButtonPressed {
           button: Button::Left,
           x,
@@ -758,21 +790,24 @@ fn main() {
           x,
           y,
         } => {
-          let (x, y) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
+          let (xn, yn) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
 
-          if let Some(((ox, oy), _)) = selection {
+          if let Some(((ox, oy), _, _)) = selection {
             if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
-              let new_piece_isnt_same_color =
-                || board[(x, y)].map(|p| p.color != old_color).unwrap_or(true);
+              let new_piece_isnt_same_color = || {
+                board[(xn, yn)]
+                  .map(|p| p.color != old_color)
+                  .unwrap_or(true)
+              };
 
-              if (ox, oy) != (x, y) && new_piece_isnt_same_color() {
+              if (ox, oy) != (xn, yn) && new_piece_isnt_same_color() {
                 // move needs to be legal AND cannot put us in check after we do it
 
-                let board_after_move = || board.apply_move((ox, oy), (x, y));
+                let board_after_move = || board.apply_move((ox, oy), (xn, yn));
 
-                if dbg!(is_move_legal(&board, (ox, oy), (x, y)))
+                if dbg!(is_move_legal(&board, (ox, oy), (xn, yn)))
                   && !dbg!(is_in_check(&board_after_move(), to_move))
                 {
                   board = board_after_move();
@@ -797,20 +832,20 @@ fn main() {
             selection = None;
           } else {
             // don't allow selecting empty squares
-            if let Some(piece) = board[(x, y)] {
+            if let Some(piece) = board[(xn, yn)] {
               // only allow selecting color to move
               if piece.color == to_move {
                 // ok something is not working...
-                let mut moves = moves_for_piece(&board, (x, y));
+                let mut moves = moves_for_piece(&board, (xn, yn));
 
                 // retain moves that don't put us in check
                 // closure returns false for illegal moves, true for legal
                 moves.retain(|&(x2, y2)| {
-                  let board_after_move = board.apply_move((x, y), (x2, y2));
+                  let board_after_move = board.apply_move((xn, yn), (x2, y2));
                   !is_in_check(&board_after_move, to_move)
                 });
 
-                selection = Some(((x, y), moves));
+                selection = Some(((xn, yn), (x, y), moves));
               }
             }
           }
@@ -839,22 +874,39 @@ fn main() {
     }
 
     // (draw other squares here)
-    if let Some(((_, _), offset_array)) = &selection {
+    if let Some(((sx, sy), (xd, yd), offset_array)) = &selection {
       rect.set_fill_color(Color::rgb(255, 0, 0));
       for (xd, yd) in offset_array {
-        // let (xd, yd) = to_coord(((*y as i32) * 8 + (*x as i32) + offset) as u32);
         rect.set_position(Vector2f::new(
           (SQUARE_SIZE * *xd) as f32,
           (SQUARE_SIZE * *yd) as f32,
         ));
         window.draw(&rect);
       }
+
+      debug_assert!(board[(*sx, *sy)].is_some());
+
+      let mut board_copy = board;
+
+      if let Some(selected_piece) = mem::take(&mut board_copy[(*sx, *sy)]) {
+        board_copy.draw(&mut window, &texture_map);
+        selected_piece.draw_precise(
+          (
+            *xd - (SQUARE_SIZE as i32 / 2),
+            *yd - (SQUARE_SIZE as i32 / 2),
+          ),
+          &mut window,
+          &texture_map,
+        );
+      } else {
+        board_copy.draw(&mut window, &texture_map);
+      }
+    } else {
+      board.draw(&mut window, &texture_map);
     }
 
     // - don't select square if there's like no legal moves
     // otherwise you have to do confusing double click
-
-    board.draw(&mut window, &texture_map);
 
     window.display()
   }
