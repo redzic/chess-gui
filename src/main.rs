@@ -752,10 +752,13 @@ fn main() {
           button: Button::Left,
           x,
           y,
+        }
+        | Event::MouseButtonReleased {
+          button: Button::Left,
+          x,
+          y,
         } => {
           let (x, y) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
-
-          // println!("click: ({}, {})", x, y);
 
           if let Some(((ox, oy), _)) = selection {
             if let Some(old_piece) = board[(ox, oy)] {
