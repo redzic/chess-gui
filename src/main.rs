@@ -93,6 +93,334 @@ impl Board {
     }
   }
 
+  // --- CASTLING DEBUG
+
+  // black to move
+  fn new2() -> Self {
+    Board {
+      board: [
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: King,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        Some(Piece {
+          class: Queen,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        None,
+        Some(Piece {
+          class: Queen,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: King,
+          color: White,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+      ],
+      castling_rights: [true, true],
+    }
+  }
+
+  // white to move
+  fn new3() -> Self {
+    Board {
+      board: [
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        None,
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Queen,
+          color: Black,
+        }),
+        Some(Piece {
+          class: King,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        None,
+        None,
+        Some(Piece {
+          class: Queen,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: King,
+          color: White,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+      ],
+      castling_rights: [true, true],
+    }
+  }
+
   /// Get copy of board after applying a move.
   fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
     let mut board = *self;
@@ -466,7 +794,6 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
         }
 
         let rank_yidx = if p.color.is_white() { 7u32 } else { 0 };
-        // let king_orig_xidx = if p.color.is_white()
         if board.castling_rights[p.color as usize] && y == rank_yidx {
           // add castling moves
           // TODO update castling rights for each rook
@@ -721,8 +1048,8 @@ fn main() {
 
   let mut board = Board::new();
   let mut selection: Option<((u32, u32), Vec<(u32, u32)>)> = None;
-  // let mut to_move = PieceColor::White;
-  let mut to_move = PieceColor::Black;
+  let mut to_move = PieceColor::White;
+  // let mut to_move = PieceColor::Black;
 
   loop {
     while let Some(event) = window.poll_event() {
