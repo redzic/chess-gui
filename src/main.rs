@@ -53,6 +53,9 @@ type BoardState = Option<Piece>;
 #[derive(Copy, Clone)]
 pub struct Board {
   board: [BoardState; 64],
+  // index 0 - white,
+  // index 1 - black
+  castling_rights: [bool; 2],
 }
 
 impl Board {
@@ -81,15 +84,62 @@ impl Board {
     board[8 * 0 + 4] = Some(BK);
     board[8 * 7 + 4] = Some(WK);
 
-    Self { board }
+    Self {
+      board,
+      castling_rights: [true; 2],
+    }
   }
 
   /// Get copy of board after applying a move.
   fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
     let mut board = *self;
-    board[(x2, y2)] = board[(x1, y1)];
-    board[(x1, y1)] = None;
-    board
+
+    // handle castling
+    if board[(x1, y1)]
+      .map(|p| p.class == PieceType::King)
+      .unwrap_or(false)
+      && (x1 as i32 - x2 as i32).abs() == 2
+    {
+      // direction
+      let is_rook_right = x2 > x1;
+      let color = board[(x1, y1)].unwrap().color;
+      let rank_idx = if color == PieceColor::White { 7 } else { 0 };
+      let rook_idx = if is_rook_right { 7 } else { 0 };
+
+      assert!(y1 == y2 && y1 == rank_idx);
+      assert!(board.castling_rights[color as usize]);
+
+      // also cannot castle THROUGH check.
+
+      // assert rook is there
+      assert!(board[(rook_idx, y1)]
+        .map(|p| p.class == PieceType::Rook)
+        .unwrap_or(false));
+
+      // also ensure there are no pieces in between.
+
+      // move king
+      board
+        .board
+        .swap((8 * x1 + y1) as usize, (8 * x2 + y2) as usize);
+
+      let new_rook_x = if is_rook_right { x1 + 1 } else { x1 - 1 };
+      board
+        .board
+        .swap((8 * rook_idx + y1) as usize, (8 * new_rook_x + y1) as usize);
+
+      board.castling_rights[color as usize] = false;
+
+      board
+    } else if false {
+      // handle pawn promotions
+      unreachable!()
+    } else {
+      // TODO remove castling rights here also
+      board[(x2, y2)] = board[(x1, y1)];
+      board[(x1, y1)] = None;
+      board
+    }
   }
 
   fn draw(&self, window: &mut RenderWindow, texture_map: &[SfBox<Texture>; 12]) {
