@@ -492,6 +492,8 @@ static QUEEN_DIRECTIONS: [(i32, i32); 8] = [
 ];
 
 // return vector of final coordinates for piece
+// TODO (important) update this to handle pawn promotion as a possible move
+// otherwise checking for checkmate will be wrong in some cases.
 fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
   // we generate offsets, then maybe also check further legality of the move?
   // i.e. we do not put our own king in check by making this move
@@ -959,7 +961,7 @@ fn main() {
                 let mut promotion: Option<Piece> = None;
 
                 if is_pawn_promotion() {
-                  // TODO dedup these 3 lines (rect setup)
+                  // TODO dedup these 2 lines (rect setup)
                   let mut rect = RectangleShape::new();
                   rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
 
@@ -974,7 +976,7 @@ fn main() {
                     window.draw(&rect);
                     Piece {
                       class: PROMO_OPTS[i as usize],
-                      color: PieceColor::White,
+                      color: to_move,
                     }
                     .draw_precise((draw_x, draw_y), &mut window, &texture_map);
                   }
