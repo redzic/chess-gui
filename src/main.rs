@@ -14,9 +14,16 @@ const WINDOW_SIZE: u32 = 8 * SQUARE_SIZE;
 
 const DARK: Color = Color::rgb(15, 122, 56);
 const LIGHT: Color = Color::rgb(137, 224, 143);
+const DARKER: Color = Color::rgb(28, 79, 57);
+
+fn color_mult(color: Color, multiplier: f64) -> Color {
+  let f = |x: u8| ((x as f64 * multiplier) as u32).clamp(0, 255) as u8;
+  Color::rgb(f(color.r), f(color.g), f(color.b))
+}
 
 mod piece;
 
+use crate::piece::PieceType::*;
 use crate::piece::*;
 
 impl Piece {
@@ -27,7 +34,7 @@ impl Piece {
 
     // maybe reuse sprites? idk if that affects anything...
     let mut sprite = Sprite::new();
-    sprite.set_texture(&texture, false);
+    sprite.set_texture(texture, false);
 
     let offset = match self.class {
       PieceType::Pawn => PAWN_XOFF,
@@ -56,7 +63,7 @@ impl Piece {
 
     // maybe reuse sprites? idk if that affects anything...
     let mut sprite = Sprite::new();
-    sprite.set_texture(&texture, false);
+    sprite.set_texture(texture, false);
 
     let offset = match self.class {
       PieceType::Pawn => PAWN_XOFF,
@@ -84,31 +91,58 @@ pub struct Board {
   castling_rights: [bool; 2],
 }
 
+// TODO represent this struct more compactly
+#[derive(Copy, Clone, Debug)]
+struct Move {
+  // (x, y)
+  from: (u32, u32),
+  // (x, y)
+  to: (u32, u32),
+
+  // pawn promotion
+  promotion: Option<Piece>,
+}
+
+impl Move {
+  #[inline]
+  fn coords(self) -> ((u32, u32), (u32, u32)) {
+    (self.from, self.to)
+  }
+
+  fn from_coords((x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Self {
+    Self {
+      from: (x1, y1),
+      to: (x2, y2),
+      promotion: None,
+    }
+  }
+}
+
 impl Board {
   // standard board setup
   fn new() -> Self {
     let mut board = [None; 64];
 
     for j in 0..8 {
-      board[8 * 1 + j] = Some(BP);
+      board[8 + j] = Some(BP);
       board[8 * 6 + j] = Some(WP);
     }
 
-    board[8 * 7 + 0] = Some(WR);
+    board[8 * 7] = Some(WR);
     board[8 * 7 + 7] = Some(WR);
-    board[8 * 0 + 0] = Some(BR);
-    board[8 * 0 + 7] = Some(BR);
+    board[0] = Some(BR);
+    board[7] = Some(BR);
     board[8 * 7 + 1] = Some(WN);
     board[8 * 7 + 6] = Some(WN);
-    board[8 * 0 + 1] = Some(BN);
-    board[8 * 0 + 6] = Some(BN);
+    board[1] = Some(BN);
+    board[6] = Some(BN);
     board[8 * 7 + 2] = Some(WB);
     board[8 * 7 + 5] = Some(WB);
-    board[8 * 0 + 2] = Some(BB);
-    board[8 * 0 + 5] = Some(BB);
-    board[8 * 0 + 3] = Some(BQ);
+    board[2] = Some(BB);
+    board[5] = Some(BB);
+    board[3] = Some(BQ);
     board[8 * 7 + 3] = Some(WQ);
-    board[8 * 0 + 4] = Some(BK);
+    board[4] = Some(BK);
     board[8 * 7 + 4] = Some(WK);
 
     Self {
@@ -118,7 +152,9 @@ impl Board {
   }
 
   /// Get copy of board after applying a move.
-  fn apply_move(&self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> Board {
+  fn apply_move(&self, mv: Move) -> Board {
+    let ((x1, y1), (x2, y2)) = mv.coords();
+
     let mut board = *self;
 
     // handle castling
@@ -127,6 +163,8 @@ impl Board {
       .unwrap_or(false)
       && (x1 as i32 - x2 as i32).abs() == 2
     {
+      debug_assert!(mv.promotion.is_none());
+
       // direction
       let is_rook_right = x2 > x1;
       let color = board[(x1, y1)].unwrap().color;
@@ -158,14 +196,28 @@ impl Board {
       board.castling_rights[color as usize] = false;
 
       board
-    } else if false {
-      // handle pawn promotions
-      unreachable!()
+    } else if let Some(promo) = mv.promotion {
+      assert!(board[(x1, y1)]
+        .map(|p| p.class == PieceType::Pawn)
+        .unwrap_or(false));
+
+      // TODO add more checks here
+
+      // let pawn_rank =
+
+      board[(x1, y1)] = None;
+      board[(x2, y2)] = Some(promo);
+
+      board
     } else {
+      // handle regular move
+
       // TODO make sure after pawn promotion, you cannot promote to rook
       // and castle with that rook
       // although that shouldn't be possible if the original rooks don't move
       // or get captured, in which case you lose castling rights anyway.
+
+      debug_assert!(mv.promotion.is_none());
 
       if let Some(piece) = board[(x1, y1)] {
         if matches!(piece.class, PieceType::King | PieceType::Rook) {
@@ -175,7 +227,6 @@ impl Board {
         unreachable!()
       }
 
-      // TODO remove castling rights here also
       board[(x2, y2)] = board[(x1, y1)];
       board[(x1, y1)] = None;
       board
@@ -326,7 +377,7 @@ pub fn is_in_checkmate(board: &Board, player: PieceColor) -> bool {
         let (x, y) = to_coord(i);
         let moves = moves_for_piece(board, (x, y));
         for mv in moves {
-          if !is_in_check(&board.apply_move((x, y), mv), player) {
+          if !is_in_check(&board.apply_move(Move::from_coords((x, y), mv)), player) {
             return false;
           }
         }
@@ -593,7 +644,9 @@ fn do_pieces_exist_x1x2(board: &Board, rank_idx: u32, (x1, x2): (u32, u32)) -> b
   false
 }
 
-fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> bool {
+fn is_move_legal(board: &Board, mv: Move) -> bool {
+  let ((x1, y1), (x2, y2)) = mv.coords();
+
   // TODO do not allow moves that put your king in check
   if (x1, y1) == (x2, y2) {
     return false;
@@ -601,6 +654,16 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
 
   // TODO maybe check other obviously ridiculous scenarios here as well,
   // possibly as a debug assert?
+
+  // ensure (x1, y1) exists and that if it is not a pawn, it doesn't
+  // have a promotion.
+  assert!(board[(x1, y1)]
+    .map(|p| if !p.is_pawn() {
+      mv.promotion.is_none()
+    } else {
+      true
+    })
+    .unwrap_or(false));
 
   if let Some(piece) = board[(x1, y1)] {
     match piece.class {
@@ -615,7 +678,7 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
           PieceColor::Black => (1, (1..=2), 1),
         };
 
-        if let Some(captured_piece) = board[(x2, y2)] {
+        (if let Some(captured_piece) = board[(x2, y2)] {
           captured_piece.color != piece.color
             && (x1 as i32 - x2 as i32).abs() == 1
             && y_dist() == direction
@@ -626,7 +689,18 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
               .all(|r_off| board[(x1, (y1 as i32 + r_off * direction) as u32)].is_none())
         } else {
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
-        }
+        }) && ({
+          let last_rank = if piece.color.is_white() { 0 } else { 7 };
+
+          if y2 == last_rank {
+            // promotion exists and is valid
+            mv.promotion
+              .map(|pr| PROMO_OPTS.contains(&pr.class) && pr.color == piece.color)
+              .unwrap_or(false)
+          } else {
+            true
+          }
+        })
       }
       PieceType::Knight => {
         let xdist = (x1 as i32 - x2 as i32).abs() - 1;
@@ -715,6 +789,70 @@ fn is_move_legal(board: &Board, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> b
   }
 }
 
+static PROMO_OPTS: [PieceType; 4] = [Knight, Bishop, Rook, Queen];
+
+fn draw_board(
+  board: Board,
+  window: &mut RenderWindow,
+  texture_map: &[SfBox<Texture>; 12],
+  selection: &Option<((u32, u32), (i32, i32), Vec<(u32, u32)>)>,
+) {
+  window.clear(LIGHT);
+
+  let mut rect = RectangleShape::new();
+  rect.set_fill_color(DARK);
+  rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
+
+  // draw dark squares
+  for i in 0..8 {
+    for j in 0..8 {
+      if (i ^ j) & 1 != 0 {
+        rect.set_position(Vector2f::new(
+          (SQUARE_SIZE * i) as f32,
+          (SQUARE_SIZE * j) as f32,
+        ));
+        window.draw(&rect);
+      }
+    }
+  }
+
+  // (draw other squares here)
+  if let Some(((sx, sy), (xd, yd), offset_array)) = &selection {
+    for &(xd, yd) in offset_array {
+      let is_dark = (xd ^ yd) & 1 != 0;
+      // TODO maybe blend with another color slightly or something?
+      let color = color_mult(if is_dark { DARK } else { LIGHT }, 0.4);
+      rect.set_fill_color(color);
+
+      rect.set_position(Vector2f::new(
+        (SQUARE_SIZE * xd) as f32,
+        (SQUARE_SIZE * yd) as f32,
+      ));
+      window.draw(&rect);
+    }
+
+    debug_assert!(board[(*sx, *sy)].is_some());
+
+    let mut board_copy = board;
+
+    if let Some(selected_piece) = mem::take(&mut board_copy[(*sx, *sy)]) {
+      board_copy.draw(window, texture_map);
+      selected_piece.draw_precise(
+        (
+          *xd - (SQUARE_SIZE as i32 / 2),
+          *yd - (SQUARE_SIZE as i32 / 2),
+        ),
+        window,
+        texture_map,
+      );
+    } else {
+      board_copy.draw(window, texture_map);
+    }
+  } else {
+    board.draw(window, texture_map);
+  }
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -757,6 +895,7 @@ fn main() {
 
   let mut board = Board::new();
   let mut selection: Option<((u32, u32), (i32, i32), Vec<(u32, u32)>)> = None;
+
   let mut to_move = PieceColor::White;
 
   loop {
@@ -780,6 +919,9 @@ fn main() {
           }
         }
 
+        // ok... some kind of desync between press and release happens
+        // which causes UI to mess up...
+        // probably just handle these two differently
         Event::MouseButtonPressed {
           button: Button::Left,
           x,
@@ -805,9 +947,97 @@ fn main() {
               if (ox, oy) != (xn, yn) && new_piece_isnt_same_color() {
                 // move needs to be legal AND cannot put us in check after we do it
 
-                let board_after_move = || board.apply_move((ox, oy), (xn, yn));
+                // check for pawn promotion, if so, don't apply move, change state to
+                // menu selection and then apply move after selecting pawn move.
 
-                if dbg!(is_move_legal(&board, (ox, oy), (xn, yn)))
+                let pawn_last_rank = if old_color.is_white() { 0 } else { 7 };
+
+                let is_pawn_promotion = || {
+                  old_piece.is_pawn() && yn == pawn_last_rank && (oy as i32 - yn as i32).abs() == 1
+                };
+
+                let mut promotion: Option<Piece> = None;
+
+                if is_pawn_promotion() {
+                  // TODO dedup these 3 lines (rect setup)
+                  let mut rect = RectangleShape::new();
+                  rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
+
+                  // render code goes here now
+                  rect.set_fill_color(DARKER);
+                  for i in 0..4i32 {
+                    let draw_x = SQUARE_SIZE as i32 * 4 + (i - 2) * SQUARE_SIZE as i32;
+                    let draw_y = (SQUARE_SIZE * 4 - SQUARE_SIZE / 2) as i32;
+
+                    rect.set_position(Vector2f::new(draw_x as f32, draw_y as f32));
+
+                    window.draw(&rect);
+                    Piece {
+                      class: PROMO_OPTS[i as usize],
+                      color: PieceColor::White,
+                    }
+                    .draw_precise((draw_x, draw_y), &mut window, &texture_map);
+                  }
+
+                  window.display();
+
+                  'pawn: loop {
+                    while let Some(event) = window.poll_event() {
+                      match event {
+                        // TODO dedup with main loop?
+                        Event::Closed
+                        | Event::KeyPressed {
+                          code: Key::Escape, ..
+                        } => return,
+
+                        Event::MouseButtonPressed {
+                          button: Button::Left,
+                          x,
+                          y,
+                        } => {
+                          // Refer to drawing pawn selection code to find where these
+                          // values come from
+
+                          let min_x = 2 * SQUARE_SIZE;
+                          let max_x = 6 * SQUARE_SIZE;
+
+                          let min_y = 4 * SQUARE_SIZE - SQUARE_SIZE / 2;
+                          let max_y = min_y + SQUARE_SIZE;
+
+                          assert!(selection.is_some());
+
+                          if (min_x..=max_x).contains(&(x as u32))
+                            && (min_y..=max_y).contains(&(y as u32))
+                          {
+                            let normalized_x = x as u32 - min_x;
+                            let square_idx = normalized_x / SQUARE_SIZE;
+
+                            let selected_promo = PROMO_OPTS[square_idx as usize];
+
+                            promotion = Some(Piece {
+                              class: selected_promo,
+                              color: to_move,
+                            });
+                            break 'pawn;
+                          }
+                        }
+
+                        // quit etc.
+                        _ => {}
+                      }
+                    }
+                  }
+                }
+
+                let mv = dbg!(Move {
+                  from: (ox, oy),
+                  to: (xn, yn),
+                  promotion,
+                });
+
+                let board_after_move = || board.apply_move(mv);
+
+                if dbg!(is_move_legal(&board, mv))
                   && !dbg!(is_in_check(&board_after_move(), to_move))
                 {
                   board = board_after_move();
@@ -824,12 +1054,15 @@ fn main() {
 
                   println!("{:?}", to_move);
                   // println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
+
+                  selection = None;
                 } else {
                   println!("Illegal move!");
+
+                  selection = None;
                 }
               }
             }
-            selection = None;
           } else {
             // don't allow selecting empty squares
             if let Some(piece) = board[(xn, yn)] {
@@ -841,7 +1074,7 @@ fn main() {
                 // retain moves that don't put us in check
                 // closure returns false for illegal moves, true for legal
                 moves.retain(|&(x2, y2)| {
-                  let board_after_move = board.apply_move((xn, yn), (x2, y2));
+                  let board_after_move = board.apply_move(Move::from_coords((xn, yn), (x2, y2)));
                   !is_in_check(&board_after_move, to_move)
                 });
 
@@ -854,59 +1087,24 @@ fn main() {
       }
     }
 
-    window.clear(LIGHT);
+    draw_board(board, &mut window, &texture_map, &selection);
 
-    let mut rect = RectangleShape::new();
-    rect.set_fill_color(DARK);
-    rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
+    // if promotion == PawnPromotion::Waiting {
+    // rect.set_fill_color(DARKER);
+    // for i in 0..4i32 {
+    //   let draw_x = SQUARE_SIZE as i32 * 4 + (i - 2) * SQUARE_SIZE as i32;
+    //   let draw_y = (SQUARE_SIZE * 4 - SQUARE_SIZE / 2) as i32;
 
-    // draw dark squares
-    for i in 0..8 {
-      for j in 0..8 {
-        if (i ^ j) & 1 != 0 {
-          rect.set_position(Vector2f::new(
-            (SQUARE_SIZE * i) as f32,
-            (SQUARE_SIZE * j) as f32,
-          ));
-          window.draw(&rect);
-        }
-      }
-    }
+    //   rect.set_position(Vector2f::new(draw_x as f32, draw_y as f32));
 
-    // (draw other squares here)
-    if let Some(((sx, sy), (xd, yd), offset_array)) = &selection {
-      rect.set_fill_color(Color::rgb(255, 0, 0));
-      for (xd, yd) in offset_array {
-        rect.set_position(Vector2f::new(
-          (SQUARE_SIZE * *xd) as f32,
-          (SQUARE_SIZE * *yd) as f32,
-        ));
-        window.draw(&rect);
-      }
-
-      debug_assert!(board[(*sx, *sy)].is_some());
-
-      let mut board_copy = board;
-
-      if let Some(selected_piece) = mem::take(&mut board_copy[(*sx, *sy)]) {
-        board_copy.draw(&mut window, &texture_map);
-        selected_piece.draw_precise(
-          (
-            *xd - (SQUARE_SIZE as i32 / 2),
-            *yd - (SQUARE_SIZE as i32 / 2),
-          ),
-          &mut window,
-          &texture_map,
-        );
-      } else {
-        board_copy.draw(&mut window, &texture_map);
-      }
-    } else {
-      board.draw(&mut window, &texture_map);
-    }
-
-    // - don't select square if there's like no legal moves
-    // otherwise you have to do confusing double click
+    //   window.draw(&rect);
+    //   Piece {
+    //     class: PROMO_OPTS[i as usize],
+    //     color: PieceColor::White,
+    //   }
+    //   .draw_precise((draw_x, draw_y), &mut window, &texture_map);
+    // }
+    // }
 
     window.display()
   }

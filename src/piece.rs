@@ -54,6 +54,27 @@ pub struct Piece {
   pub color: PieceColor,
 }
 
+impl Piece {
+  pub fn is_pawn(self) -> bool {
+    self.class == PieceType::Pawn
+  }
+  pub fn is_knight(self) -> bool {
+    self.class == PieceType::Knight
+  }
+  pub fn is_bishop(self) -> bool {
+    self.class == PieceType::Bishop
+  }
+  pub fn is_rook(self) -> bool {
+    self.class == PieceType::Rook
+  }
+  pub fn is_queen(self) -> bool {
+    self.class == PieceType::Queen
+  }
+  pub fn is_king(self) -> bool {
+    self.class == PieceType::King
+  }
+}
+
 pub const WP: Piece = Piece {
   class: PieceType::Pawn,
   color: PieceColor::White,
