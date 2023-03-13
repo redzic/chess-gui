@@ -377,7 +377,7 @@ pub fn is_in_checkmate(board: &Board, player: PieceColor) -> bool {
         let (x, y) = to_coord(i);
         let moves = moves_for_piece(board, (x, y));
         for mv in moves {
-          if !is_in_check(&board.apply_move(Move::from_coords((x, y), mv)), player) {
+          if !is_in_check(&board.apply_move(mv), player) {
             return false;
           }
         }
@@ -421,8 +421,8 @@ pub fn is_in_check(board: &Board, player: PieceColor) -> bool {
         // check if any of their moves covers our king
         let squares = moves_for_piece(board, to_coord(i));
 
-        for (sx, sy) in squares {
-          if (sx, sy) == (kx, ky) {
+        for mv in squares {
+          if mv.to == (kx, ky) {
             return true;
           }
         }
@@ -439,11 +439,18 @@ pub fn inbounds(x: i32, y: i32) -> bool {
   (0..=7).contains(&x) && (0..=7).contains(&y)
 }
 
+// mv!(..., ..., (x, y))
+macro_rules! mv {
+  ($x:expr, $y:expr, $from:expr) => {
+    Move::from_coords($from, ($x, $y))
+  };
+}
+
 fn moves_for_sliding_piece(
   board: &Board,
   (x, y): (u32, u32),
   directions: &[(i32, i32)],
-) -> Vec<(u32, u32)> {
+) -> Vec<Move> {
   debug_assert!(board[(x, y)]
     .map(|p| matches!(
       p.class,
@@ -460,11 +467,11 @@ fn moves_for_sliding_piece(
       while inbounds(xt, yt) {
         if let Some(p2) = board[(xt as u32, yt as u32)] {
           if p2.color != p.color {
-            moves.push((xt as u32, yt as u32));
+            moves.push(mv!(xt as u32, yt as u32, (x, y)));
           }
           break;
         } else {
-          moves.push((xt as u32, yt as u32));
+          moves.push(mv!(xt as u32, yt as u32, (x, y)));
         }
 
         xt += xd;
@@ -494,7 +501,8 @@ static QUEEN_DIRECTIONS: [(i32, i32); 8] = [
 // return vector of final coordinates for piece
 // TODO (important) update this to handle pawn promotion as a possible move
 // otherwise checking for checkmate will be wrong in some cases.
-fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
+// fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
+fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
   // we generate offsets, then maybe also check further legality of the move?
   // i.e. we do not put our own king in check by making this move
   if let Some(p) = board[(x, y)] {
@@ -521,7 +529,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
               .map(|p2| p2.color != p.color)
               .unwrap_or(true)
           {
-            moves.push((xn as u32, yn as u32));
+            moves.push(mv!(xn as u32, yn as u32, (x, y)));
           }
         }
 
@@ -551,7 +559,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
               .map(|p2| p2.color != p.color)
               .unwrap_or(true)
           {
-            moves.push((xd as u32, yd as u32));
+            moves.push(mv!(xd as u32, yd as u32, (x, y)));
           }
         }
 
@@ -580,7 +588,11 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
                   let is_rook_right = rook_idx > x;
                   let king_xoff: i32 = if is_rook_right { 2 } else { -2 };
 
-                  moves.push(((x as i32 + king_xoff).try_into().unwrap(), rank_yidx));
+                  moves.push(mv!(
+                    (x as i32 + king_xoff).try_into().unwrap(),
+                    rank_yidx,
+                    (x, y)
+                  ));
                 }
               }
             }
@@ -597,7 +609,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
         // basic move, push forward 1
         let (bx, by) = (x as i32, y as i32 + direction);
         if inbounds(bx, by) && board[(bx as u32, by as u32)].is_none() {
-          moves.push((bx as u32, by as u32));
+          moves.push(mv!(bx as u32, by as u32, (x, y)));
         }
 
         // push 2 if on rank 2
@@ -609,7 +621,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
 
           let (px, py) = (x, (y as i32 + 2 * direction) as u32);
           if board[(px, py)].is_none() && board[(px, (y as i32 + direction) as u32)].is_none() {
-            moves.push((px, py));
+            moves.push(mv!(px, py, (x, y)));
           }
         }
 
@@ -621,7 +633,7 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<(u32, u32)> {
               .map(|p2| p2.color != p.color)
               .unwrap_or(false)
           {
-            moves.push((ax as u32, ay as u32));
+            moves.push(mv!(ax as u32, ay as u32, (x, y)));
           }
         }
 
@@ -797,7 +809,7 @@ fn draw_board(
   board: Board,
   window: &mut RenderWindow,
   texture_map: &[SfBox<Texture>; 12],
-  selection: &Option<((u32, u32), (i32, i32), Vec<(u32, u32)>)>,
+  selection: &Option<((u32, u32), (i32, i32), Vec<Move>)>,
 ) {
   window.clear(LIGHT);
 
@@ -819,8 +831,10 @@ fn draw_board(
   }
 
   // (draw other squares here)
-  if let Some(((sx, sy), (xd, yd), offset_array)) = &selection {
-    for &(xd, yd) in offset_array {
+  if let Some(((sx, sy), (xd, yd), moves)) = &selection {
+    for mv in moves {
+      let (xd, yd) = mv.to;
+
       let is_dark = (xd ^ yd) & 1 != 0;
       // TODO maybe blend with another color slightly or something?
       let color = color_mult(if is_dark { DARK } else { LIGHT }, 0.4);
@@ -896,7 +910,7 @@ fn main() {
   ];
 
   let mut board = Board::new();
-  let mut selection: Option<((u32, u32), (i32, i32), Vec<(u32, u32)>)> = None;
+  let mut selection: Option<((u32, u32), (i32, i32), Vec<Move>)> = None;
 
   let mut to_move = PieceColor::White;
 
@@ -1074,8 +1088,8 @@ fn main() {
 
                 // retain moves that don't put us in check
                 // closure returns false for illegal moves, true for legal
-                moves.retain(|&(x2, y2)| {
-                  let board_after_move = board.apply_move(Move::from_coords((xn, yn), (x2, y2)));
+                moves.retain(|&mv| {
+                  let board_after_move = board.apply_move(mv);
                   !is_in_check(&board_after_move, to_move)
                 });
 
