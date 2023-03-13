@@ -606,10 +606,25 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
 
         let direction = if p.color.is_white() { -1 } else { 1 };
 
+        let last_rank = if p.color.is_white() { 0 } else { 7 };
+
         // basic move, push forward 1
         let (bx, by) = (x as i32, y as i32 + direction);
         if inbounds(bx, by) && board[(bx as u32, by as u32)].is_none() {
-          moves.push(mv!(bx as u32, by as u32, (x, y)));
+          if by == last_rank {
+            for pt in PROMO_OPTS {
+              moves.push(Move {
+                from: (x, y),
+                to: (bx as u32, by as u32),
+                promotion: Some(Piece {
+                  class: pt,
+                  color: p.color,
+                }),
+              });
+            }
+          } else {
+            moves.push(mv!(bx as u32, by as u32, (x, y)));
+          }
         }
 
         // push 2 if on rank 2
@@ -633,7 +648,21 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
               .map(|p2| p2.color != p.color)
               .unwrap_or(false)
           {
-            moves.push(mv!(ax as u32, ay as u32, (x, y)));
+            // TODO: dedup code from previous?
+            if ay == last_rank {
+              for pt in PROMO_OPTS {
+                moves.push(Move {
+                  from: (x, y),
+                  to: (ax as u32, ay as u32),
+                  promotion: Some(Piece {
+                    class: pt,
+                    color: p.color,
+                  }),
+                });
+              }
+            } else {
+              moves.push(mv!(ax as u32, ay as u32, (x, y)));
+            }
           }
         }
 
