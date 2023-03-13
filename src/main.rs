@@ -1022,7 +1022,6 @@ fn main() {
                           }
                         }
 
-                        // quit etc.
                         _ => {}
                       }
                     }
@@ -1088,23 +1087,6 @@ fn main() {
     }
 
     draw_board(board, &mut window, &texture_map, &selection);
-
-    // if promotion == PawnPromotion::Waiting {
-    // rect.set_fill_color(DARKER);
-    // for i in 0..4i32 {
-    //   let draw_x = SQUARE_SIZE as i32 * 4 + (i - 2) * SQUARE_SIZE as i32;
-    //   let draw_y = (SQUARE_SIZE * 4 - SQUARE_SIZE / 2) as i32;
-
-    //   rect.set_position(Vector2f::new(draw_x as f32, draw_y as f32));
-
-    //   window.draw(&rect);
-    //   Piece {
-    //     class: PROMO_OPTS[i as usize],
-    //     color: PieceColor::White,
-    //   }
-    //   .draw_precise((draw_x, draw_y), &mut window, &texture_map);
-    // }
-    // }
 
     window.display()
   }
