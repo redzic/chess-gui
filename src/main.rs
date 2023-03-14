@@ -86,9 +86,14 @@ type BoardState = Option<Piece>;
 #[derive(Copy, Clone, Debug)]
 pub struct Board {
   board: [BoardState; 64],
-  // index 0 - white,
-  // index 1 - black
-  castling_rights: [bool; 2],
+  // outer-
+  // [0] - white,
+  // [1] - black
+
+  // inner [bool;2] ->
+  //  [0] - left
+  //  [1] - right (in terms of x-axis, not necessarily from player's perspective)
+  castling_rights: [[bool; 2]; 2],
 }
 
 // TODO represent this struct more compactly
@@ -147,7 +152,7 @@ impl Board {
 
     Self {
       board,
-      castling_rights: [true; 2],
+      castling_rights: [[true; 2]; 2],
     }
   }
 
@@ -172,7 +177,7 @@ impl Board {
       let rook_idx = if is_rook_right { 7 } else { 0 };
 
       assert!(y1 == y2 && y1 == rank_idx);
-      assert!(board.castling_rights[color as usize]);
+      assert!(board.castling_rights[color as usize][is_rook_right as usize]);
 
       // also cannot castle THROUGH check.
 
@@ -193,7 +198,7 @@ impl Board {
         .board
         .swap((8 * y1 + rook_idx) as usize, (8 * y1 + new_rook_x) as usize);
 
-      board.castling_rights[color as usize] = false;
+      board.castling_rights[color as usize] = [false; 2];
 
       board
     } else if let Some(promo) = mv.promotion {
@@ -219,9 +224,31 @@ impl Board {
 
       debug_assert!(mv.promotion.is_none());
 
+      // TODO: && castling rights exist
+      // just short-circuit optimization, won't change results
       if let Some(piece) = board[(x1, y1)] {
-        if matches!(piece.class, PieceType::King | PieceType::Rook) {
-          board.castling_rights[piece.color as usize] = false;
+        // TODO optimize this
+        match (piece.class, piece.color) {
+          (PieceType::King, _) => {
+            board.castling_rights[piece.color as usize] = [false; 2];
+          }
+          (PieceType::Rook, PieceColor::White) => {
+            if (x1, y1) == (0, 7) {
+              // left rook
+              board.castling_rights[piece.color as usize][0] = false;
+            } else if (x1, y1) == (7, 7) {
+              board.castling_rights[piece.color as usize][1] = false;
+            }
+          }
+          (PieceType::Rook, PieceColor::Black) => {
+            if (x1, y1) == (0, 0) {
+              // left rook
+              board.castling_rights[piece.color as usize][0] = false;
+            } else if (x1, y1) == (7, 0) {
+              board.castling_rights[piece.color as usize][1] = false;
+            }
+          }
+          _ => {}
         }
       } else {
         unreachable!()
@@ -564,18 +591,24 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
         }
 
         let rank_yidx = if p.color.is_white() { 7u32 } else { 0 };
-        if board.castling_rights[p.color as usize] && y == rank_yidx {
+        // if board.castling_rights[p.color as usize] && y == rank_yidx {
+        if y == rank_yidx {
           // add castling moves
           // TODO update castling rights for each rook
           // TODO maybe also check that king is on original square,
           // but maybe this can be done with accurate castling rights.
 
-          for rook_idx in [0, 7] {
-            if let Some(Piece {
-              class: PieceType::Rook,
-              color,
-            }) = board[(rook_idx, rank_yidx)]
-            {
+          for rook_idx in [0u32, 7] {
+            if let (
+              true,
+              Some(Piece {
+                class: PieceType::Rook,
+                color,
+              }),
+            ) = (
+              board.castling_rights[p.color as usize][(rook_idx != 0) as usize],
+              board[(rook_idx, rank_yidx)],
+            ) {
               if color == p.color {
                 // maybe add
 
@@ -789,13 +822,14 @@ fn is_move_legal(board: &Board, mv: Move) -> bool {
               return false;
             }
 
+            let is_rook_right = x2 > x1;
+
             // ensure castling rights exist
-            if !board.castling_rights[piece.color as usize] {
+            if !board.castling_rights[piece.color as usize][is_rook_right as usize] {
               return false;
             }
 
             // in terms of x index, not necessarily from player's perspective
-            let is_rook_right = x2 > x1;
             let rook_idx = if is_rook_right { 7 } else { 0 };
 
             if let Some(Piece {
