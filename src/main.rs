@@ -839,6 +839,7 @@ fn draw_board(
   window: &mut RenderWindow,
   texture_map: &[SfBox<Texture>; 12],
   selection: &Option<((u32, u32), (i32, i32), Vec<Move>)>,
+  draw_selection: bool,
 ) {
   window.clear(LIGHT);
 
@@ -859,42 +860,45 @@ fn draw_board(
     }
   }
 
-  // (draw other squares here)
-  if let Some(((sx, sy), (xd, yd), moves)) = &selection {
-    for mv in moves {
-      let (xd, yd) = mv.to;
+  match (selection, draw_selection) {
+    (Some(((sx, sy), (xd, yd), moves)), true) => {
+      // no if-let chain on stable :(
+      for mv in moves {
+        let (xd, yd) = mv.to;
 
-      let is_dark = (xd ^ yd) & 1 != 0;
-      // TODO maybe blend with another color slightly or something?
-      let color = color_mult(if is_dark { DARK } else { LIGHT }, 0.4);
-      rect.set_fill_color(color);
+        let is_dark = (xd ^ yd) & 1 != 0;
+        // TODO maybe blend with another color slightly or something?
+        let color = color_mult(if is_dark { DARK } else { LIGHT }, 0.4);
+        rect.set_fill_color(color);
 
-      rect.set_position(Vector2f::new(
-        (SQUARE_SIZE * xd) as f32,
-        (SQUARE_SIZE * yd) as f32,
-      ));
-      window.draw(&rect);
+        rect.set_position(Vector2f::new(
+          (SQUARE_SIZE * xd) as f32,
+          (SQUARE_SIZE * yd) as f32,
+        ));
+        window.draw(&rect);
+      }
+
+      debug_assert!(board[(*sx, *sy)].is_some());
+
+      let mut board_copy = board;
+
+      if let Some(selected_piece) = mem::take(&mut board_copy[(*sx, *sy)]) {
+        board_copy.draw(window, texture_map);
+        selected_piece.draw_precise(
+          (
+            *xd - (SQUARE_SIZE as i32 / 2),
+            *yd - (SQUARE_SIZE as i32 / 2),
+          ),
+          window,
+          texture_map,
+        );
+      } else {
+        board_copy.draw(window, texture_map);
+      }
     }
-
-    debug_assert!(board[(*sx, *sy)].is_some());
-
-    let mut board_copy = board;
-
-    if let Some(selected_piece) = mem::take(&mut board_copy[(*sx, *sy)]) {
-      board_copy.draw(window, texture_map);
-      selected_piece.draw_precise(
-        (
-          *xd - (SQUARE_SIZE as i32 / 2),
-          *yd - (SQUARE_SIZE as i32 / 2),
-        ),
-        window,
-        texture_map,
-      );
-    } else {
-      board_copy.draw(window, texture_map);
+    _ => {
+      board.draw(window, texture_map);
     }
-  } else {
-    board.draw(window, texture_map);
   }
 }
 
@@ -1025,6 +1029,15 @@ fn main() {
                 let mut promotion: Option<Piece> = None;
 
                 if is_pawn_promotion() {
+                  {
+                    let mut board_copy = board;
+                    // move pawn for display purposes
+                    let pawn = mem::take(&mut board_copy[(ox, oy)]);
+                    board_copy[(xn, yn)] = pawn;
+
+                    draw_board(board_copy, &mut window, &texture_map, &selection, false);
+                  }
+
                   // TODO dedup these 2 lines (rect setup)
                   let mut rect = RectangleShape::new();
                   rect.set_size(Vector2::new(SQUARE_SIZE as f32, SQUARE_SIZE as f32));
@@ -1132,7 +1145,7 @@ fn main() {
       }
     }
 
-    draw_board(board, &mut window, &texture_map, &selection);
+    draw_board(board, &mut window, &texture_map, &selection, true);
 
     window.display()
   }
