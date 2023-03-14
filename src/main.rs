@@ -1000,6 +1000,7 @@ fn main() {
           let (xn, yn) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
 
           if let Some(((ox, oy), _, _)) = selection {
+            // TODO if-let or something, this is too much nesting
             if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
@@ -1118,15 +1119,13 @@ fn main() {
 
                   println!("{:?}", to_move);
                   // println!("{to_move:?} in check? {}", is_in_check(&board, to_move));
-
-                  selection = None;
                 } else {
                   println!("Illegal move!");
-
-                  selection = None;
                 }
               }
             }
+
+            selection = None;
           }
         }
         _ => {}
