@@ -964,15 +964,35 @@ fn main() {
           }
         }
 
-        // ok... some kind of desync between press and release happens
-        // which causes UI to mess up...
-        // probably just handle these two differently
         Event::MouseButtonPressed {
           button: Button::Left,
           x,
           y,
+        } => {
+          let (xn, yn) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
+
+          if selection.is_none() {
+            // don't allow selecting empty squares
+            if let Some(piece) = board[(xn, yn)] {
+              // only allow selecting color to move
+              if piece.color == to_move {
+                // ok something is not working...
+                let mut moves = moves_for_piece(&board, (xn, yn));
+
+                // retain moves that don't put us in check
+                // closure returns false for illegal moves, true for legal
+                moves.retain(|&mv| {
+                  let board_after_move = board.apply_move(mv);
+                  !is_in_check(&board_after_move, to_move)
+                });
+
+                selection = Some(((xn, yn), (x, y), moves));
+              }
+            }
+          }
         }
-        | Event::MouseButtonReleased {
+
+        Event::MouseButtonReleased {
           button: Button::Left,
           x,
           y,
@@ -1105,24 +1125,6 @@ fn main() {
 
                   selection = None;
                 }
-              }
-            }
-          } else {
-            // don't allow selecting empty squares
-            if let Some(piece) = board[(xn, yn)] {
-              // only allow selecting color to move
-              if piece.color == to_move {
-                // ok something is not working...
-                let mut moves = moves_for_piece(&board, (xn, yn));
-
-                // retain moves that don't put us in check
-                // closure returns false for illegal moves, true for legal
-                moves.retain(|&mv| {
-                  let board_after_move = board.apply_move(mv);
-                  !is_in_check(&board_after_move, to_move)
-                });
-
-                selection = Some(((xn, yn), (x, y), moves));
               }
             }
           }
