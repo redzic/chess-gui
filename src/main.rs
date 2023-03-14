@@ -228,23 +228,15 @@ impl Board {
       // just short-circuit optimization, won't change results
       if let Some(piece) = board[(x1, y1)] {
         // TODO optimize this
-        match (piece.class, piece.color) {
-          (PieceType::King, _) => {
+        match piece.class {
+          PieceType::King => {
             board.castling_rights[piece.color as usize] = [false; 2];
           }
-          (PieceType::Rook, PieceColor::White) => {
-            if (x1, y1) == (0, 7) {
-              // left rook
+          PieceType::Rook => {
+            let y_idx = if piece.color.is_black() { 0 } else { 7 };
+            if (x1, y1) == (0, y_idx) {
               board.castling_rights[piece.color as usize][0] = false;
-            } else if (x1, y1) == (7, 7) {
-              board.castling_rights[piece.color as usize][1] = false;
-            }
-          }
-          (PieceType::Rook, PieceColor::Black) => {
-            if (x1, y1) == (0, 0) {
-              // left rook
-              board.castling_rights[piece.color as usize][0] = false;
-            } else if (x1, y1) == (7, 0) {
+            } else if (x1, y1) == (7, y_idx) {
               board.castling_rights[piece.color as usize][1] = false;
             }
           }
