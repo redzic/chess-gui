@@ -94,6 +94,16 @@ pub struct Board {
   //  [0] - left
   //  [1] - right (in terms of x-axis, not necessarily from player's perspective)
   castling_rights: [[bool; 2]; 2],
+
+  // en passant
+  // square that just moved
+  // after apply_move, this should be set to the square of the pawn
+  // that is currently there.
+
+  // square that CAN BE CAPTURED (is technically empty)
+
+  // should be set to none after every turn
+  en_passant_square: Option<(u32, u32)>,
 }
 
 // TODO represent this struct more compactly
@@ -153,6 +163,7 @@ impl Board {
     Self {
       board,
       castling_rights: [[true; 2]; 2],
+      en_passant_square: None,
     }
   }
 
@@ -161,6 +172,8 @@ impl Board {
     let ((x1, y1), (x2, y2)) = mv.coords();
 
     let mut board = *self;
+
+    let en_passant_square = mem::take(&mut board.en_passant_square);
 
     // handle castling
     if board[(x1, y1)]
@@ -227,8 +240,10 @@ impl Board {
       // TODO: && castling rights exist
       // just short-circuit optimization, won't change results
       if let Some(piece) = board[(x1, y1)] {
+        let color = piece.color;
         // TODO optimize this
         match piece.class {
+          // handle castling
           PieceType::King => {
             board.castling_rights[piece.color as usize] = [false; 2];
           }
@@ -240,15 +255,44 @@ impl Board {
               board.castling_rights[piece.color as usize][1] = false;
             }
           }
+          // handle 2 pawn move (en passant)
+          PieceType::Pawn if (y1 as i32 - y2 as i32).abs() == 2 => {
+            debug_assert!([1, 6].contains(&y1));
+            debug_assert!(x1 == x2);
+
+            board.en_passant_square = Some((
+              x2,
+              (y2 as i32 - piece.color.direction()).try_into().unwrap(),
+            ));
+          }
           _ => {}
         }
-      } else {
-        unreachable!()
-      }
 
-      board[(x2, y2)] = board[(x1, y1)];
-      board[(x1, y1)] = None;
-      board
+        match (en_passant_square, piece.class) {
+          (Some((epx, epy)), PieceType::Pawn) if dbg!(epx, epy) == (x2, y2) => {
+            debug_assert!(board[(epx, epy)].is_none());
+            let pawn_capture =
+              mem::take(&mut board[(epx, (epy as i32 + (!color).direction()).try_into().unwrap())]);
+            debug_assert!(
+              dbg!(pawn_capture)
+                == Some(Piece {
+                  class: PieceType::Pawn,
+                  color: !color
+                })
+            );
+            board[(x2, y2)] = board[(x1, y1)];
+            board[(x1, y1)] = None;
+            board
+          }
+          _ => {
+            board[(x2, y2)] = board[(x1, y1)];
+            board[(x1, y1)] = None;
+            board
+          }
+        }
+      } else {
+        unreachable!("starting square should not be empty in apply_move()")
+      }
     }
   }
 
@@ -669,9 +713,10 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
         for xoff in [-1, 1] {
           let (ax, ay) = (x as i32 + xoff, y as i32 + direction);
           if inbounds(ax, ay)
-            && board[(ax as u32, ay as u32)]
-              .map(|p2| p2.color != p.color)
-              .unwrap_or(false)
+            && match board[(ax as u32, ay as u32)] {
+              Some(p2) => p2.color != p.color,
+              None => Some((ax as u32, ay as u32)) == board.en_passant_square,
+            }
           {
             // TODO: dedup code from previous?
             if ay == last_rank {
@@ -746,16 +791,29 @@ fn is_move_legal(board: &Board, mv: Move) -> bool {
           PieceColor::Black => (1, (1..=2), 1),
         };
 
+        // TODO clean up this code
         (if let Some(captured_piece) = board[(x2, y2)] {
+          // regular capture
           captured_piece.color != piece.color
             && (x1 as i32 - x2 as i32).abs() == 1
             && y_dist() == direction
+        } else if x1 != x2 {
+          // en passant
+
+          // due to order of if statement, it is guaranteed that board[(x2, y2)] is None
+          // in this branch
+
+          board.en_passant_square == Some((x2, y2))
+            && (x1 as i32 - x2 as i32).abs() == 1
+            && y_dist() == direction
         } else if y1 == rank2 {
+          // move from starting square (can move 1 or 2 squares forward)
           x1 == x2
             && file_range.contains(&y_dist())
             && (1..=y_dist())
               .all(|r_off| board[(x1, (y1 as i32 + r_off * direction) as u32)].is_none())
         } else {
+          // basic pawn move, 1 forward
           (x2, y2 as i32) == (x1, y1 as i32 + direction)
         }) && ({
           let last_rank = if piece.color.is_white() { 0 } else { 7 };
@@ -763,6 +821,7 @@ fn is_move_legal(board: &Board, mv: Move) -> bool {
           if y2 == last_rank {
             // promotion exists and is valid
             mv.promotion
+              // TODO: optimize to just simple range check instead of loop
               .map(|pr| PROMO_OPTS.contains(&pr.class) && pr.color == piece.color)
               .unwrap_or(false)
           } else {
@@ -943,7 +1002,8 @@ fn main() {
 
   let vm = VideoMode::desktop_mode();
 
-  window.set_vertical_sync_enabled(true);
+  // seems to run smoother with vsync off
+  window.set_vertical_sync_enabled(false);
   window.set_position(Vector2::new(
     ((vm.width - WINDOW_SIZE) / 2) as i32,
     ((vm.height - WINDOW_SIZE) / 2) as i32,
@@ -1001,23 +1061,21 @@ fn main() {
         } => {
           let (xn, yn) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
 
-          if selection.is_none() {
-            // don't allow selecting empty squares
-            if let Some(piece) = board[(xn, yn)] {
-              // only allow selecting color to move
-              if piece.color == to_move {
-                // ok something is not working...
-                let mut moves = moves_for_piece(&board, (xn, yn));
+          // don't allow selecting empty squares
+          if let Some(piece) = board[(xn, yn)] {
+            // only allow selecting color to move
+            if piece.color == to_move {
+              // ok something is not working...
+              let mut moves = moves_for_piece(&board, (xn, yn));
 
-                // retain moves that don't put us in check
-                // closure returns false for illegal moves, true for legal
-                moves.retain(|&mv| {
-                  let board_after_move = board.apply_move(mv);
-                  !is_in_check(&board_after_move, to_move)
-                });
+              // retain moves that don't put us in check
+              // closure returns false for illegal moves, true for legal
+              moves.retain(|&mv| {
+                let board_after_move = board.apply_move(mv);
+                !is_in_check(&board_after_move, to_move)
+              });
 
-                selection = Some(((xn, yn), (x, y), moves));
-              }
+              selection = Some(((xn, yn), (x, y), moves));
             }
           }
         }
@@ -1165,6 +1223,8 @@ fn main() {
             }
 
             selection = None;
+
+            dbg!(board.en_passant_square);
           }
         }
         _ => {}
@@ -1174,5 +1234,10 @@ fn main() {
     draw_board(board, &mut window, &texture_map, &selection, true);
 
     window.display()
+
+    // -en passant
+    // -castle through check
+    // -50 move rule
+    // -stalemate
   }
 }

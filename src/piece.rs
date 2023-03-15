@@ -36,6 +36,16 @@ impl PieceColor {
   pub fn is_black(self) -> bool {
     self == PieceColor::Black
   }
+
+  // return direction pawns are moving in terms of y-axis
+  #[inline]
+  pub fn direction(self) -> i32 {
+    if self.is_white() {
+      -1
+    } else {
+      1
+    }
+  }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
