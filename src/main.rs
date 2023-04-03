@@ -1102,6 +1102,8 @@ fn main() {
 
   let mut to_move = PieceColor::White;
 
+  let mut depth = 1;
+
   loop {
     while let Some(event) = window.poll_event() {
       match event {
@@ -1119,8 +1121,6 @@ fn main() {
           // shit does not work properly in regards to check,
           // search does not seem to consider legal moves.
 
-          let depth = 1;
-
           // let search_result = minimax(board, 4, to_move);
           let search_result = minimax(board, depth - 1, to_move);
           println!("Minimax (depth: {} ply): {:?}", depth, search_result);
@@ -1135,6 +1135,17 @@ fn main() {
           if is_in_checkmate(&board, to_move) {
             println!("Checkmate! {:?} wins.", !to_move);
             return;
+          }
+        }
+
+        Event::KeyPressed { code, .. } => {
+          if (Key::Num0 as usize..=Key::Num9 as usize).contains(&(code as usize)) {
+            let num = code as usize - Key::Num0 as usize;
+
+            if num != 0 {
+              depth = num as u32;
+              println!("[Info] Search depth set to {} ply", num)
+            }
           }
         }
 
