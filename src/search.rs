@@ -1,12 +1,21 @@
 use crate::*;
 
 // minimax search (no alpha-beta pruning yet)
-pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
+pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Option<Move>, i32) {
   let choose = if color.is_white() { i32::max } else { i32::min };
   //   let choose = i32::min;
 
   if depth == 0 {
     let moves = board.moves_for_player(color);
+
+    if moves.is_empty() {
+      let eval = if color.is_white() {
+        -1_000_000
+      } else {
+        1_000_000
+      };
+      return (None, eval);
+    }
 
     // TODO handle this somehow
     assert!(!moves.is_empty());
@@ -26,7 +35,7 @@ pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
       .unwrap();
 
     // TODO: redundant evaluation
-    (*best_move, board.apply_move(*best_move).eval(!color))
+    (Some(*best_move), board.apply_move(*best_move).eval(!color))
   } else {
     // assert!(depth == 1);
 
@@ -43,11 +52,11 @@ pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
 
     // now choose best move
 
-    let best_move = moves
+    let (best_move, eval) = moves
       .iter()
       .reduce(|a, b| if choose(a.1, b.1) == a.1 { a } else { b })
       .unwrap();
 
-    *best_move
+    (Some(*best_move), *eval)
   }
 }

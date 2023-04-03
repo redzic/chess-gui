@@ -136,8 +136,6 @@ impl Move {
   }
 }
 
-use PieceColor::*;
-
 impl Board {
   // standard board setup
   fn new() -> Self {
@@ -168,176 +166,6 @@ impl Board {
     Self {
       board,
       castling_rights: [[true; 2]; 2],
-      en_passant_square: None,
-    }
-  }
-
-  // debug case 1
-  fn new2() -> Self {
-    Board {
-      board: [
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Queen,
-          color: Black,
-        }),
-        Some(Piece {
-          class: King,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: Black,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        None,
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Pawn,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        Some(Piece {
-          class: Queen,
-          color: White,
-        }),
-        Some(Piece {
-          class: King,
-          color: White,
-        }),
-        Some(Piece {
-          class: Bishop,
-          color: White,
-        }),
-        Some(Piece {
-          class: Knight,
-          color: White,
-        }),
-        Some(Piece {
-          class: Rook,
-          color: White,
-        }),
-      ],
-      castling_rights: [[true, true], [true, true]],
       en_passant_square: None,
     }
   }
@@ -1309,15 +1137,20 @@ fn main() {
           let search_result = minimax(board, depth - 1, to_move);
           println!("Minimax (depth: {} ply): {:?}", depth, search_result);
 
-          board = board.apply_move(search_result.0);
+          if let Some(mv) = search_result.0 {
+            board = board.apply_move(mv);
+            to_move = !to_move;
 
-          to_move = !to_move;
+            // TODO: deduplicate code
 
-          // TODO: deduplicate code
-
-          // gg
-          if is_in_checkmate(&board, to_move) {
-            println!("Checkmate! {:?} wins.", !to_move);
+            // gg
+            if is_in_checkmate(&board, to_move) {
+              println!("Checkmate! {:?} wins.", !to_move);
+              return;
+            }
+          } else {
+            // TODO fix behavior
+            println!("No moves found");
             return;
           }
         }
