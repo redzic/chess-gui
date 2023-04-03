@@ -2,8 +2,8 @@ use crate::*;
 
 // minimax search (no alpha-beta pruning yet)
 pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
-  //   let choose = if color.is_white() { i32::max } else { i32::min };
-  let choose = i32::min;
+  let choose = if color.is_white() { i32::max } else { i32::min };
+  //   let choose = i32::min;
 
   if depth == 0 {
     let moves = board.moves_for_player(color);
