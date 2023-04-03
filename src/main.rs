@@ -313,7 +313,7 @@ impl Board {
   // very simple evaluation, just sum up piece values
   // positive = advantage for white, negative = advantage for black
   fn eval(&self, to_move: PieceColor) -> i32 {
-    if is_in_checkmate(&self, to_move) {
+    if is_in_checkmate(self, to_move) {
       return if to_move.is_white() {
         -1_000_000
       } else {
@@ -356,7 +356,7 @@ impl Board {
         if let Some(piece) = self[(x, y)] {
           if piece.color == color {
             let p_mvs = moves_for_piece(self, (x, y));
-            moves.extend_from_slice(&*p_mvs);
+            moves.extend_from_slice(&p_mvs);
           }
         }
       }
