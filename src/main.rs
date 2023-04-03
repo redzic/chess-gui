@@ -305,6 +305,58 @@ impl Board {
       }
     }
   }
+
+  // very simple evaluation, just sum up piece values
+  // positive = advantage for white, negative = advantage for black
+  fn eval(&self) -> i32 {
+    self
+      .board
+      .iter()
+      .map(|x| match x {
+        Some(p) => {
+          let mult = if p.color.is_white() { 1 } else { -1 };
+
+          let magnitude = match p.class {
+            Pawn => 100,
+            Knight => 320,
+            Bishop => 330,
+            Rook => 500,
+            Queen => 900,
+            King => 20_000,
+          };
+
+          magnitude * mult
+        }
+        None => 0,
+      })
+      .sum()
+  }
+
+  fn moves_for_player(&self, color: PieceColor) -> Vec<Move> {
+    let mut moves = vec![];
+
+    for x in 0..8u32 {
+      for y in 0..8u32 {
+        if let Some(piece) = self[(x, y)] {
+          if piece.color == color {
+            let p_mvs = moves_for_piece(self, (x, y));
+            moves.extend_from_slice(&*p_mvs);
+          }
+        }
+      }
+    }
+
+    // TODO deduplicate this code
+
+    // retain moves that don't put us in check
+    // closure returns false for illegal moves, true for legal
+    moves.retain(|&mv| {
+      let board_after_move = self.apply_move(mv);
+      !is_in_check(&board_after_move, color)
+    });
+
+    moves
+  }
 }
 
 impl Index<usize> for Board {
@@ -987,6 +1039,57 @@ fn draw_board(
   }
 }
 
+// assume white
+fn depth2_search(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
+  let choose = if color.is_white() { i32::max } else { i32::min };
+  // let choose = i32::max;
+
+  if depth == 0 {
+    let moves = board.moves_for_player(color);
+
+    assert!(!moves.is_empty());
+
+    let best_move = moves
+      .iter()
+      .reduce(|a, b| {
+        let a_eval = board.apply_move(*a).eval();
+        let b_eval = board.apply_move(*b).eval();
+
+        if choose(a_eval, b_eval) == a_eval {
+          a
+        } else {
+          b
+        }
+      })
+      .unwrap();
+
+    // TODO: redundant evaluation
+    (*best_move, board.apply_move(*best_move).eval())
+  } else {
+    // assert!(depth == 1);
+
+    let mut moves: Vec<(Move, i32)> = board
+      .moves_for_player(color)
+      .iter()
+      .map(|mv| (*mv, 0))
+      .collect();
+
+    for (_, eval_to_update) in &mut moves {
+      let (_, mv_eval) = depth2_search(board, depth - 1, !color);
+      *eval_to_update = mv_eval;
+    }
+
+    // now choose best move
+
+    let best_move = moves
+      .iter()
+      .reduce(|a, b| if choose(a.1, b.1) == a.1 { a } else { b })
+      .unwrap();
+
+    *best_move
+  }
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -1045,7 +1148,18 @@ fn main() {
         Event::KeyPressed {
           code: Key::Space, ..
         } => {
-          dbg!(&board);
+          println!("Current eval: {}", board.eval());
+
+          // shit does not work properly in regards to check,
+          // search does not seem to consider legal moves.
+
+          // let search_result = depth2_search(board, 4, to_move);
+          let search_result = depth2_search(board, 1, to_move);
+          println!("Minimax depth 2: {:?}", search_result);
+
+          board = board.apply_move(search_result.0);
+
+          to_move = !to_move;
         }
 
         Event::MouseMoved { x, y } => {
