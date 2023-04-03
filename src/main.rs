@@ -136,6 +136,8 @@ impl Move {
   }
 }
 
+use PieceColor::*;
+
 impl Board {
   // standard board setup
   fn new() -> Self {
@@ -166,6 +168,176 @@ impl Board {
     Self {
       board,
       castling_rights: [[true; 2]; 2],
+      en_passant_square: None,
+    }
+  }
+
+  // debug case 1
+  fn new2() -> Self {
+    Board {
+      board: [
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Queen,
+          color: Black,
+        }),
+        Some(Piece {
+          class: King,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: Black,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        None,
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Pawn,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        Some(Piece {
+          class: Queen,
+          color: White,
+        }),
+        Some(Piece {
+          class: King,
+          color: White,
+        }),
+        Some(Piece {
+          class: Bishop,
+          color: White,
+        }),
+        Some(Piece {
+          class: Knight,
+          color: White,
+        }),
+        Some(Piece {
+          class: Rook,
+          color: White,
+        }),
+      ],
+      castling_rights: [[true, true], [true, true]],
       en_passant_square: None,
     }
   }
@@ -274,14 +446,18 @@ impl Board {
         match (en_passant_square, piece.class) {
           (Some((epx, epy)), PieceType::Pawn) if (epx, epy) == (x2, y2) => {
             debug_assert!(board[(epx, epy)].is_none());
+
+            dbg!((x1, y1), (x2, y2));
+            dbg!(&board, en_passant_square);
+
             let pawn_capture =
               mem::take(&mut board[(epx, (epy as i32 + (!color).direction()).try_into().unwrap())]);
-            debug_assert!(
-              dbg!(pawn_capture)
-                == Some(Piece {
-                  class: PieceType::Pawn,
-                  color: !color
-                })
+            debug_assert_eq!(
+              pawn_capture,
+              Some(Piece {
+                class: PieceType::Pawn,
+                color: !color
+              })
             );
             board[(x2, y2)] = board[(x1, y1)];
             board[(x1, y1)] = None;
@@ -1102,7 +1278,8 @@ fn main() {
 
   let mut to_move = PieceColor::White;
 
-  let mut depth = 1;
+  let mut depth_white = 1;
+  let mut depth_black = 1;
 
   loop {
     while let Some(event) = window.poll_event() {
@@ -1111,6 +1288,8 @@ fn main() {
         | Event::KeyPressed {
           code: Key::Escape, ..
         } => return,
+
+        // Event::KeyPressed { code: Key::, .. }=>{}
 
         // dump board
         Event::KeyPressed {
@@ -1121,7 +1300,12 @@ fn main() {
           // shit does not work properly in regards to check,
           // search does not seem to consider legal moves.
 
-          // let search_result = minimax(board, 4, to_move);
+          let depth = if to_move.is_white() {
+            depth_white
+          } else {
+            depth_black
+          };
+
           let search_result = minimax(board, depth - 1, to_move);
           println!("Minimax (depth: {} ply): {:?}", depth, search_result);
 
@@ -1138,13 +1322,18 @@ fn main() {
           }
         }
 
-        Event::KeyPressed { code, .. } => {
-          if (Key::Num0 as usize..=Key::Num9 as usize).contains(&(code as usize)) {
-            let num = code as usize - Key::Num0 as usize;
+        Event::KeyPressed { code, shift, .. } => {
+          if (Key::Num0 as u32..=Key::Num9 as u32).contains(&(code as u32)) {
+            let num = code as u32 - Key::Num0 as u32;
 
             if num != 0 {
-              depth = num as u32;
-              println!("[Info] Search depth set to {} ply", num)
+              if shift {
+                depth_black = num;
+                println!("[Info] Search depth (Black) set to {} ply", num)
+              } else {
+                depth_white = num;
+                println!("[Info] Search depth (White) set to {} ply", num)
+              }
             }
           }
         }

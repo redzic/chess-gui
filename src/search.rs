@@ -36,8 +36,8 @@ pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
       .map(|mv| (*mv, 0))
       .collect();
 
-    for (_, eval_to_update) in &mut moves {
-      let (_, mv_eval) = minimax(board, depth - 1, !color);
+    for (mv, eval_to_update) in &mut moves {
+      let (_, mv_eval) = minimax(board.apply_move(*mv), depth - 1, !color);
       *eval_to_update = mv_eval;
     }
 
