@@ -22,6 +22,9 @@ fn color_mult(color: Color, multiplier: f64) -> Color {
 }
 
 mod piece;
+mod search;
+
+use crate::search::minimax;
 
 use crate::piece::PieceType::*;
 use crate::piece::*;
@@ -108,7 +111,7 @@ pub struct Board {
 
 // TODO represent this struct more compactly
 #[derive(Copy, Clone, Debug)]
-struct Move {
+pub struct Move {
   // (x, y)
   from: (u32, u32),
   // (x, y)
@@ -308,24 +311,36 @@ impl Board {
 
   // very simple evaluation, just sum up piece values
   // positive = advantage for white, negative = advantage for black
-  fn eval(&self) -> i32 {
+  fn eval(&self, to_move: PieceColor) -> i32 {
+    if is_in_checkmate(&self, to_move) {
+      return if to_move.is_white() {
+        -1_000_000
+      } else {
+        1_000_000
+      };
+    }
+
     self
       .board
       .iter()
-      .map(|x| match x {
+      .enumerate()
+      .map(|(idx, square)| match square {
         Some(p) => {
           let mult = if p.color.is_white() { 1 } else { -1 };
 
-          let magnitude = match p.class {
-            Pawn => 100,
-            Knight => 320,
-            Bishop => 330,
-            Rook => 500,
-            Queen => 900,
-            King => 20_000,
+          let (magnitude, table) = match p.class {
+            Pawn => (100, &PAWN_TABLE),
+            Knight => (320, &KNIGHT_TABLE),
+            Bishop => (330, &BISHOP_TABLE),
+            Rook => (500, &ROOK_TABLE),
+            Queen => (900, &QUEEN_TABLE),
+            King => (20_000, &KING_TABLE),
           };
 
-          magnitude * mult
+          let (x, y) = to_coord(idx as u32);
+          let y = if p.color.is_white() { y } else { 7 - y };
+
+          mult * (magnitude + table[(y * 8 + x) as usize])
         }
         None => 0,
       })
@@ -351,8 +366,10 @@ impl Board {
     // retain moves that don't put us in check
     // closure returns false for illegal moves, true for legal
     moves.retain(|&mv| {
-      let board_after_move = self.apply_move(mv);
-      !is_in_check(&board_after_move, color)
+      is_move_legal(self, mv) && {
+        let board_after_move = self.apply_move(mv);
+        !is_in_check(&board_after_move, color)
+      }
     });
 
     moves
@@ -1039,57 +1056,6 @@ fn draw_board(
   }
 }
 
-// assume white
-fn depth2_search(board: Board, depth: u32, color: PieceColor) -> (Move, i32) {
-  let choose = if color.is_white() { i32::max } else { i32::min };
-  // let choose = i32::max;
-
-  if depth == 0 {
-    let moves = board.moves_for_player(color);
-
-    assert!(!moves.is_empty());
-
-    let best_move = moves
-      .iter()
-      .reduce(|a, b| {
-        let a_eval = board.apply_move(*a).eval();
-        let b_eval = board.apply_move(*b).eval();
-
-        if choose(a_eval, b_eval) == a_eval {
-          a
-        } else {
-          b
-        }
-      })
-      .unwrap();
-
-    // TODO: redundant evaluation
-    (*best_move, board.apply_move(*best_move).eval())
-  } else {
-    // assert!(depth == 1);
-
-    let mut moves: Vec<(Move, i32)> = board
-      .moves_for_player(color)
-      .iter()
-      .map(|mv| (*mv, 0))
-      .collect();
-
-    for (_, eval_to_update) in &mut moves {
-      let (_, mv_eval) = depth2_search(board, depth - 1, !color);
-      *eval_to_update = mv_eval;
-    }
-
-    // now choose best move
-
-    let best_move = moves
-      .iter()
-      .reduce(|a, b| if choose(a.1, b.1) == a.1 { a } else { b })
-      .unwrap();
-
-    *best_move
-  }
-}
-
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -1148,14 +1114,16 @@ fn main() {
         Event::KeyPressed {
           code: Key::Space, ..
         } => {
-          println!("Current eval: {}", board.eval());
+          println!("Current eval: {}", board.eval(to_move));
 
           // shit does not work properly in regards to check,
           // search does not seem to consider legal moves.
 
-          // let search_result = depth2_search(board, 4, to_move);
-          let search_result = depth2_search(board, 1, to_move);
-          println!("Minimax depth 2: {:?}", search_result);
+          let depth = 1;
+
+          // let search_result = minimax(board, 4, to_move);
+          let search_result = minimax(board, depth - 1, to_move);
+          println!("Minimax (depth: {} ply): {:?}", depth, search_result);
 
           board = board.apply_move(search_result.0);
 
