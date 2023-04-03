@@ -45,6 +45,16 @@ pub fn minimax(board: Board, depth: u32, color: PieceColor) -> (Option<Move>, i3
       .map(|mv| (*mv, 0))
       .collect();
 
+    // TODO deduplicate code
+    if moves.is_empty() {
+      let eval = if color.is_white() {
+        -1_000_000
+      } else {
+        1_000_000
+      };
+      return (None, eval);
+    }
+
     for (mv, eval_to_update) in &mut moves {
       let (_, mv_eval) = minimax(board.apply_move(*mv), depth - 1, !color);
       *eval_to_update = mv_eval;

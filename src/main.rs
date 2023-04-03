@@ -275,9 +275,6 @@ impl Board {
           (Some((epx, epy)), PieceType::Pawn) if (epx, epy) == (x2, y2) => {
             debug_assert!(board[(epx, epy)].is_none());
 
-            dbg!((x1, y1), (x2, y2));
-            dbg!(&board, en_passant_square);
-
             let pawn_capture =
               mem::take(&mut board[(epx, (epy as i32 + (!color).direction()).try_into().unwrap())]);
             debug_assert_eq!(
