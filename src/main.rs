@@ -1128,6 +1128,14 @@ fn main() {
           board = board.apply_move(search_result.0);
 
           to_move = !to_move;
+
+          // TODO: deduplicate code
+
+          // gg
+          if is_in_checkmate(&board, to_move) {
+            println!("Checkmate! {:?} wins.", !to_move);
+            return;
+          }
         }
 
         Event::MouseMoved { x, y } => {
