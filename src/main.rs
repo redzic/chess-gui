@@ -25,7 +25,7 @@ fn color_mult(color: Color, multiplier: f64) -> Color {
 mod piece;
 mod search;
 
-use crate::search::{minimax, worst_eval};
+use crate::search::minimax;
 
 use crate::piece::PieceType::*;
 use crate::piece::*;
@@ -722,10 +722,30 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
                 let mut idxs: [u32; 2] = [x, rook_idx];
                 idxs.sort();
 
-                if !do_pieces_exist_x1x2(board, rank_yidx, (idxs[0] + 1, idxs[1] - 1)) {
+                let is_rook_right = rook_idx != 0;
+                if !do_pieces_exist_x1x2(board, rank_yidx, (idxs[0] + 1, idxs[1] - 1)) && {
+                  let mut is_legal = true;
+
+                  let xoff = if is_rook_right { 1 } else { -1 };
+
+                  for (idx, square) in board.board.iter().enumerate() {
+                    if let Some(p2) = square {
+                      if p2.color != p.color && p2.class != PieceType::King {
+                        if moves_for_piece(board, to_coord(idx as u32))
+                          .iter()
+                          .any(|mv| [(x, y), ((x as i32 + xoff) as u32, y)].contains(&mv.to))
+                        {
+                          is_legal = false;
+                          break;
+                        }
+                      }
+                    }
+                  }
+
+                  is_legal
+                } {
                   // if no pieces exist in between and we have castling rights, we can
                   // add this as a move
-                  let is_rook_right = rook_idx > x;
                   let king_xoff: i32 = if is_rook_right { 2 } else { -2 };
 
                   moves.push(mv!(
@@ -971,6 +991,26 @@ fn is_move_legal(board: &Board, mv: Move) -> bool {
 
             // TODO also check castle THROUGH check here
             if do_pieces_exist_x1x2(board, y1, (xidx[0] + 1, xidx[1] - 1)) {
+              return false;
+            }
+
+            // Can't castle if under check
+            if is_in_check(board, piece.color) {
+              return false;
+            }
+
+            // Can't castle through a check either
+            let xoff = if is_rook_right { 1 } else { -1 };
+
+            debug_assert!(inbounds(x1 as i32, y1 as i32));
+
+            let mut board_copy = *board;
+            board_copy.board.swap(
+              (y1 * 8 + x1) as usize,
+              ((y1 * 8 + x1) as i32 + xoff) as usize,
+            );
+
+            if is_in_check(&board_copy, piece.color) {
               return false;
             }
 

@@ -1,13 +1,5 @@
 use crate::*;
 
-pub fn worst_eval(color: PieceColor) -> i32 {
-  if color.is_white() {
-    -1_000_000
-  } else {
-    1_000_000
-  }
-}
-
 pub fn minimax(
   board: Board,
   depth: u32,
