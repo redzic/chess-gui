@@ -1058,6 +1058,17 @@ fn draw_board(
   }
 }
 
+fn print_checkmate(winner: PieceColor) {
+  let winner = if winner.is_white() { "WHITE" } else { "black" };
+  println!("============================================");
+  println!("============================================");
+  println!("===         !!! CHECKMATE !!!            ===");
+  println!("=========   !!  {} WINS !!      =========", winner);
+  println!("===         !!! CHECKMATE !!!            ===");
+  println!("============================================");
+  println!("============================================");
+}
+
 fn main() {
   let max_aa = sfml::graphics::RenderTexture::maximum_antialiasing_level();
 
@@ -1134,9 +1145,13 @@ fn main() {
 
           let start_time = Instant::now();
 
-          let search_result = minimax(board, depth - 1, to_move, i32::MIN, i32::MAX);
-          println!("Minimax (depth: {} ply): {:?}", depth, search_result);
-          println!("Search took {:?}", start_time.elapsed());
+          let search_result = minimax(board, depth, to_move, i32::MIN, i32::MAX);
+          println!(
+            "minimax: (depth {} ply, {:?} time): {:?}\n",
+            depth,
+            start_time.elapsed(),
+            search_result
+          );
 
           if let Some(mv) = search_result.0 {
             board = board.apply_move(mv);
@@ -1144,9 +1159,8 @@ fn main() {
 
             // TODO: deduplicate code
 
-            // gg
             if is_in_checkmate(&board, to_move) {
-              println!("Checkmate! {:?} wins.", !to_move);
+              print_checkmate(!to_move);
             }
           } else {
             // TODO fix behavior
@@ -1333,9 +1347,7 @@ fn main() {
 
                   // gg
                   if is_in_checkmate(&board, to_move) {
-                    println!("Checkmate! {:?} wins.", !to_move);
-                    // return;
-                    // wait_forever();
+                    print_checkmate(!to_move);
                   }
 
                   println!("{:?}", to_move);
