@@ -1099,7 +1099,7 @@ fn draw_board(
 }
 
 fn print_checkmate(winner: PieceColor) {
-  let winner = if winner.is_white() { "WHITE" } else { "black" };
+  let winner = if winner.is_white() { "WHITE" } else { "BLACK" };
   println!("============================================");
   println!("============================================");
   println!("===         !!! CHECKMATE !!!            ===");
