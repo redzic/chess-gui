@@ -1,5 +1,6 @@
 use std::mem::{self, swap};
 use std::ops::{Index, IndexMut};
+use std::time::Instant;
 
 use sfml::graphics::{
   Color, RectangleShape, RenderTarget, RenderWindow, Shape, Sprite, Texture, Transformable,
@@ -1131,8 +1132,11 @@ fn main() {
             depth_black
           };
 
+          let start_time = Instant::now();
+
           let search_result = minimax(board, depth - 1, to_move);
           println!("Minimax (depth: {} ply): {:?}", depth, search_result);
+          println!("Search took {:?}", start_time.elapsed());
 
           if let Some(mv) = search_result.0 {
             board = board.apply_move(mv);
