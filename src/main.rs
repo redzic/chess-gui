@@ -1143,12 +1143,11 @@ fn main() {
             // gg
             if is_in_checkmate(&board, to_move) {
               println!("Checkmate! {:?} wins.", !to_move);
-              return;
             }
           } else {
             // TODO fix behavior
             println!("No moves found");
-            return;
+            // return;
           }
         }
 
@@ -1331,7 +1330,8 @@ fn main() {
                   // gg
                   if is_in_checkmate(&board, to_move) {
                     println!("Checkmate! {:?} wins.", !to_move);
-                    return;
+                    // return;
+                    // wait_forever();
                   }
 
                   println!("{:?}", to_move);
@@ -1354,6 +1354,8 @@ fn main() {
     draw_board(board, &mut window, &texture_map, &selection, true);
 
     window.display()
+
+    // TODO do not display pawn promotion menu for illegal moves
 
     // -en passant
     // -castle through check
