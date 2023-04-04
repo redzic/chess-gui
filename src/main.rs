@@ -1204,8 +1204,18 @@ fn main() {
             }
           } else {
             // TODO fix behavior
-            println!("No moves found");
-            // return;
+
+            let moves = board.moves_for_player(to_move);
+            if moves.is_empty() {
+              println!("No legal moves in this position ({:?} to move)", to_move);
+            } else {
+              println!("(Forced mate -- minimax returned no results)");
+              println!("Picking arbitrary move");
+              let mv = moves[0];
+              board = board.apply_move(mv);
+
+              to_move = !to_move;
+            }
           }
         }
 
