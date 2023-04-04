@@ -25,7 +25,7 @@ fn color_mult(color: Color, multiplier: f64) -> Color {
 mod piece;
 mod search;
 
-use crate::search::minimax;
+use crate::search::{minimax, worst_eval};
 
 use crate::piece::PieceType::*;
 use crate::piece::*;
@@ -1134,7 +1134,7 @@ fn main() {
 
           let start_time = Instant::now();
 
-          let search_result = minimax(board, depth - 1, to_move);
+          let search_result = minimax(board, depth - 1, to_move, i32::MIN, i32::MAX);
           println!("Minimax (depth: {} ply): {:?}", depth, search_result);
           println!("Search took {:?}", start_time.elapsed());
 
