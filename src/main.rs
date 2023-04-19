@@ -727,6 +727,8 @@ fn moves_for_piece(board: &Board, (x, y): (u32, u32)) -> Vec<Move> {
                   let mut is_legal = true;
 
                   let xoff = if is_rook_right { 1 } else { -1 };
+                  // TODO check godbolt diff
+                  // let xoff = is_rook_right as i32 * 2 - 1;
 
                   for (idx, square) in board.board.iter().enumerate() {
                     if let Some(p2) = square {
@@ -1275,7 +1277,7 @@ fn main() {
           let (xn, yn) = (x as u32 / SQUARE_SIZE, y as u32 / SQUARE_SIZE);
 
           if let Some(((ox, oy), _, _)) = selection {
-            // TODO if-let or something, this is too much nesting
+            // TODO if-let chain or something, this is too much nesting
             if let Some(old_piece) = board[(ox, oy)] {
               let old_color = old_piece.color;
 
@@ -1299,7 +1301,28 @@ fn main() {
 
                 let mut promotion: Option<Piece> = None;
 
-                if is_pawn_promotion() {
+                // legal moves are ones that do not put you in check
+                // whether you are in check doesn't depend on what types of pieces you
+                // have, it just depends on whether an enemy piece attacks yours
+
+                // therefore we can just use any piece type for promotion for
+                // purposes of legality check
+
+                // TODO add early exit if move isn't legal (but is_pawn_promotion()==true)
+
+                if is_pawn_promotion()
+                  && is_move_legal(
+                    &board,
+                    Move {
+                      from: (ox, oy),
+                      to: (xn, yn),
+                      promotion: Some(Piece {
+                        class: PieceType::Knight,
+                        color: old_piece.color,
+                      }),
+                    },
+                  )
+                {
                   {
                     let mut board_copy = board;
                     // move pawn for display purposes
@@ -1409,8 +1432,6 @@ fn main() {
             }
 
             selection = None;
-
-            dbg!(board.en_passant_square);
           }
         }
         _ => {}
@@ -1421,11 +1442,12 @@ fn main() {
 
     window.display()
 
-    // TODO do not display pawn promotion menu for illegal moves
-
-    // -en passant
-    // -castle through check
+    // missing chess rules:
     // -50 move rule
     // -stalemate
+    // -draw by repetition
+
+    // missing features:
+    // -undo move
   }
 }
