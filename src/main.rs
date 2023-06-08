@@ -1155,6 +1155,8 @@ fn main() {
   let mut board = Board::new();
   let mut selection: Option<((u32, u32), (i32, i32), Vec<Move>)> = None;
 
+  let mut board_states = vec![board];
+
   let mut to_move = PieceColor::White;
 
   let mut depth_white = 1;
@@ -1197,6 +1199,9 @@ fn main() {
 
           if let Some(mv) = search_result.0 {
             board = board.apply_move(mv);
+
+            board_states.push(board);
+
             to_move = !to_move;
 
             // TODO: deduplicate code
@@ -1215,6 +1220,7 @@ fn main() {
               println!("Picking arbitrary move");
               let mv = moves[0];
               board = board.apply_move(mv);
+              board_states.push(board);
 
               to_move = !to_move;
             }
@@ -1232,6 +1238,13 @@ fn main() {
               } else {
                 depth_white = num;
                 println!("[Info] Search depth (White) set to {} ply", num)
+              }
+            }
+          } else if code == Key::Left {
+            if board_states.len() > 1 {
+              if let (_, Some(&previous_board)) = (board_states.pop(), board_states.last()) {
+                to_move = !to_move;
+                board = previous_board;
               }
             }
           }
@@ -1413,6 +1426,8 @@ fn main() {
                   && !dbg!(is_in_check(&board_after_move(), to_move))
                 {
                   board = board_after_move();
+
+                  board_states.push(board);
 
                   println!("({ox}, {oy}) -> ({x}, {y})");
 
